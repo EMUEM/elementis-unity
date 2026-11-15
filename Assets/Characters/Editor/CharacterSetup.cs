@@ -326,6 +326,12 @@ public static class CharacterSetup
     // name works whichever form Unity used. Also logs every clip found
     // per file (name + length) so the CI log shows exactly what the
     // importer created.
+    // "__preview__" clips are NEVER indexed: Unity generates one per take
+    // (full-take range, default settings, no loop flags), and they sort
+    // BEFORE the real split clips, so aliasing their suffix would make
+    // the map resolve every take to its preview clip (Idle/Run would not
+    // loop). A take with no real split clip must hit the fail-loud
+    // MISSING gate instead of silently resolving to its preview.
     static Dictionary<string, AnimationClip> LoadAllClips()
     {
         var map = new Dictionary<string, AnimationClip>();
@@ -338,6 +344,7 @@ public static class CharacterSetup
                 if (obj is AnimationClip clip && !string.IsNullOrEmpty(clip.name))
                 {
                     found.Add(clip.name + " (" + clip.length.ToString("0.00") + "s)");
+                    if (clip.name.StartsWith("__preview__")) continue;
                     AddClip(map, clip.name, clip, f);
                     int bar = clip.name.LastIndexOf('|');
                     if (bar >= 0 && bar + 1 < clip.name.Length)
