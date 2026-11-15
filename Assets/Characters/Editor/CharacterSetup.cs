@@ -49,7 +49,7 @@ public static class CharacterSetup
     // ------------------------------------------------------------------
     // Clip table: take name -> (source FBX, first frame, last frame, loop)
     // Frame ranges verified in Blender 4.2 (FBX re-import, 2026-11-15).
-    // UAL takes are 30 fps; the CMU kick was re-timed to 30 fps, 43f.
+    // UAL takes are 30 fps; the CMU kick was re-timed to 30 fps, 42f.
     // ------------------------------------------------------------------
     struct ClipSpec
     {
@@ -62,30 +62,32 @@ public static class CharacterSetup
 
     static readonly ClipSpec[] Ual1Clips = new ClipSpec[]
     {
-        new ClipSpec("Idle_Loop",   "UAL1_Standard.fbx",      1, 76, true),
-        new ClipSpec("Sprint_Loop", "UAL1_Standard.fbx",      1, 21, true),
-        new ClipSpec("Punch_Jab",   "UAL1_Standard.fbx",      1, 27, false),
-        new ClipSpec("Punch_Cross", "UAL1_Standard.fbx",      1, 31, false),
-        new ClipSpec("Hit_Chest",   "UAL1_Standard.fbx",      1, 11, false),
-        new ClipSpec("Death01",     "UAL1_Standard.fbx",      1, 73, false),
-        new ClipSpec("Jump_Start",  "UAL1_Standard.fbx",      1, 41, false),
-        new ClipSpec("Jump_Loop",   "UAL1_Standard.fbx",      1, 76, true),
-        new ClipSpec("Jump_Land",   "UAL1_Standard.fbx",      1, 39, false),
-        new ClipSpec("Roll",        "UAL1_Standard.fbx",      1, 45, false),
+        // Frame ranges = EXACT take lengths @30fps (FBX binary parse,
+        // 2026-11-15): lastFrame = real length, first frame 1.
+        new ClipSpec("Idle_Loop",   "UAL1_Standard.fbx",      1, 75, true),
+        new ClipSpec("Sprint_Loop", "UAL1_Standard.fbx",      1, 20, true),
+        new ClipSpec("Punch_Jab",   "UAL1_Standard.fbx",      1, 26, false),
+        new ClipSpec("Punch_Cross", "UAL1_Standard.fbx",      1, 30, false),
+        new ClipSpec("Hit_Chest",   "UAL1_Standard.fbx",      1, 10, false),
+        new ClipSpec("Death01",     "UAL1_Standard.fbx",      1, 72, false),
+        new ClipSpec("Jump_Start",  "UAL1_Standard.fbx",      1, 40, false),
+        new ClipSpec("Jump_Loop",   "UAL1_Standard.fbx",      1, 75, true),
+        new ClipSpec("Jump_Land",   "UAL1_Standard.fbx",      1, 38, false),
+        new ClipSpec("Roll",        "UAL1_Standard.fbx",      1, 44, false),
     };
     static readonly ClipSpec[] Ual2Clips = new ClipSpec[]
     {
-        new ClipSpec("Sword_Block", "UAL2_Standard.fbx",      1, 38, false),
+        new ClipSpec("Sword_Block", "UAL2_Standard.fbx",      1, 37, false),
     };
     static readonly ClipSpec[] AuthoredClips = new ClipSpec[]
     {
-        new ClipSpec("Cast_TwoArm",   "Elementis_Authored.fbx", 1, 18, false),
-        new ClipSpec("RegenChannel",  "Elementis_Authored.fbx", 1, 75, true),
-        new ClipSpec("UltimateCast",  "Elementis_Authored.fbx", 1, 60, false),
+        new ClipSpec("Cast_TwoArm",   "Elementis_Authored.fbx", 1, 17, false),
+        new ClipSpec("RegenChannel",  "Elementis_Authored.fbx", 1, 74, true),
+        new ClipSpec("UltimateCast",  "Elementis_Authored.fbx", 1, 59, false),
     };
     static readonly ClipSpec[] KickClips = new ClipSpec[]
     {
-        new ClipSpec("Kick_Roundhouse", "Kick_Roundhouse.fbx",  1, 43, false),
+        new ClipSpec("Kick_Roundhouse", "Kick_Roundhouse.fbx",  1, 42, false),
     };
 
     static IEnumerable<ClipSpec> AllClips()
@@ -318,25 +320,40 @@ public static class CharacterSetup
         }
     }
 
-    // ------------------------------------------------------------------
     // Clip loading: find every AnimationClip sub-asset of the animation FBXs.
-    // ------------------------------------------------------------------
+    // Prefix-tolerant: a clip Unity names "Armature|Idle_Loop" is indexed
+    // ALSO under the bare take name "Idle_Loop", so the lookup by take
+    // name works whichever form Unity used. Also logs every clip found
+    // per file (name + length) so the CI log shows exactly what the
+    // importer created.
     static Dictionary<string, AnimationClip> LoadAllClips()
     {
         var map = new Dictionary<string, AnimationClip>();
         foreach (var f in new[] { "UAL1_Standard.fbx", "UAL2_Standard.fbx", "Elementis_Authored.fbx", "Kick_Roundhouse.fbx" })
         {
             var path = Anims + "/" + f;
+            var found = new List<string>();
             foreach (var obj in AssetDatabase.LoadAllAssetsAtPath(path))
             {
                 if (obj is AnimationClip clip && !string.IsNullOrEmpty(clip.name))
                 {
-                    if (!map.ContainsKey(clip.name)) map.Add(clip.name, clip);
-                    else Debug.LogWarning($"[CharacterSetup] duplicate clip name '{clip.name}' in {f}");
+                    found.Add(clip.name + " (" + clip.length.ToString("0.00") + "s)");
+                    AddClip(map, clip.name, clip, f);
+                    int bar = clip.name.LastIndexOf('|');
+                    if (bar >= 0 && bar + 1 < clip.name.Length)
+                        AddClip(map, clip.name.Substring(bar + 1), clip, f);
                 }
             }
+            Debug.Log($"[CharacterSetup] clips in {f} ({found.Count}): {string.Join(", ", found)}");
         }
         return map;
+    }
+
+    static void AddClip(Dictionary<string, AnimationClip> map, string key, AnimationClip clip, string file)
+    {
+        if (!map.ContainsKey(key)) map.Add(key, clip);
+        else if (map[key] != clip)
+            Debug.LogWarning($"[CharacterSetup] duplicate clip name '{key}' in {file}");
     }
 
     // ------------------------------------------------------------------
@@ -529,7 +546,10 @@ class CharacterImportPostprocessor : AssetPostprocessor
             importer.humanDescription = BuildHumanDescription(CharacterSetup.CmuMapForImporter());
             importer.clipAnimations = new[]
             {
-                KickClip("Kick_Roundhouse", 1, 43),
+                // Kick takeName stays BARE: bare "Kick_Roundhouse" resolved
+                // against take "135_07|Kick_Roundhouse" in CI run 43724120641.
+                // Do not change this one.
+                KickClip("Kick_Roundhouse", 1, 42),
             };
         }
         else if (assetPath.EndsWith("UAL1_Standard.fbx"))
@@ -542,7 +562,7 @@ class CharacterImportPostprocessor : AssetPostprocessor
             importer.humanDescription = BuildHumanDescription(CharacterSetup.UalMapForImporter());
             importer.clipAnimations = new[]
             {
-                SimpleClip("Sword_Block", 1, 38, false),
+                SimpleClip("Sword_Block", 1, 37, false),
             };
         }
         else if (assetPath.EndsWith("Elementis_Authored.fbx"))
@@ -550,18 +570,26 @@ class CharacterImportPostprocessor : AssetPostprocessor
             importer.humanDescription = BuildHumanDescription(CharacterSetup.UalMapForImporter());
             importer.clipAnimations = new[]
             {
-                SimpleClip("Cast_TwoArm", 1, 18, false),
-                SimpleClip("RegenChannel", 1, 75, true),
-                SimpleClip("UltimateCast", 1, 60, false),
+                SimpleClip("Cast_TwoArm", 1, 17, false),
+                SimpleClip("RegenChannel", 1, 74, true),
+                SimpleClip("UltimateCast", 1, 59, false),
             };
         }
         // Katara.fbx / Azula.fbx: Bip01 auto-maps correctly; no override.
+        if (importer.clipAnimations != null && importer.clipAnimations.Length > 0)
+            Debug.Log($"[CharacterSetup] OnPreprocessModel {assetPath}: {importer.clipAnimations.Length} clip def(s): " +
+                string.Join(", ", System.Array.ConvertAll(importer.clipAnimations,
+                    c => c.name + " take='" + c.takeName + "' " + c.firstFrame + "-" + c.lastFrame)));
     }
 
+    // UAL / Authored takes are stored in the FBX as "Armature|<take>".
+    // takeName must be that FULL stored take name: with the bare take
+    // name Unity created no clip at all (only the "__preview__" clip),
+    // see CI run 43724120641. The resulting clip `name` stays bare.
     static ModelImporterClipAnimation SimpleClip(string take, int first, int last, bool loop) =>
         new ModelImporterClipAnimation
         {
-            name = take, takeName = take, firstFrame = first, lastFrame = last,
+            name = take, takeName = "Armature|" + take, firstFrame = first, lastFrame = last,
             loopTime = loop, loopPose = loop,
             wrapMode = loop ? WrapMode.Loop : WrapMode.Once,
             keepOriginalOrientation = false,
@@ -583,16 +611,17 @@ class CharacterImportPostprocessor : AssetPostprocessor
 
     static ModelImporterClipAnimation[] Ual1ClipDefs() => new[]
     {
-        SimpleClip("Idle_Loop", 1, 76, true),
-        SimpleClip("Sprint_Loop", 1, 21, true),
-        SimpleClip("Punch_Jab", 1, 27, false),
-        SimpleClip("Punch_Cross", 1, 31, false),
-        SimpleClip("Hit_Chest", 1, 11, false),
-        SimpleClip("Death01", 1, 73, false),
-        SimpleClip("Jump_Start", 1, 41, false),
-        SimpleClip("Jump_Loop", 1, 76, true),
-        SimpleClip("Jump_Land", 1, 39, false),
-        SimpleClip("Roll", 1, 45, false),
+        // lastFrame = exact take length @30fps (FBX binary parse 2026-11-15).
+        SimpleClip("Idle_Loop", 1, 75, true),
+        SimpleClip("Sprint_Loop", 1, 20, true),
+        SimpleClip("Punch_Jab", 1, 26, false),
+        SimpleClip("Punch_Cross", 1, 30, false),
+        SimpleClip("Hit_Chest", 1, 10, false),
+        SimpleClip("Death01", 1, 72, false),
+        SimpleClip("Jump_Start", 1, 40, false),
+        SimpleClip("Jump_Loop", 1, 75, true),
+        SimpleClip("Jump_Land", 1, 38, false),
+        SimpleClip("Roll", 1, 44, false),
     };
 
     static HumanDescription BuildHumanDescription(Dictionary<string, string> map)
