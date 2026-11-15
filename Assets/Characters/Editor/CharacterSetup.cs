@@ -314,7 +314,7 @@ public static class CharacterSetup
                 foreach (var layer in ctrl.layers)
                     foreach (var st in layer.stateMachine.states)
                         Debug.Log($"[CharacterSetup] {name} state '{st.state.name}' motion=" +
-                            $"{(st.state.motion != null ? st.state.motion.name + " " + st.state.motion.length.ToString("0.00") + "s" : "MISSING")} speed={st.state.speed}");
+                            $"{(st.state.motion != null ? st.state.motion.name + " " + ((st.state.motion as AnimationClip)?.length ?? 0f).ToString("0.00") + "s" : "MISSING")} speed={st.state.speed}");
         }
     }
 
@@ -377,7 +377,7 @@ public static class CharacterSetup
         {
             human = human.ToArray(),
             skeleton = skeleton.ToArray(),
-            armTwist = 0.5f, foreArmTwist = 0.5f, upperLegTwist = 0.5f, legTwist = 0.5f,
+            upperArmTwist = 0.5f, lowerArmTwist = 0.5f, upperLegTwist = 0.5f, lowerLegTwist = 0.5f,
             armStretch = 0.05f, legStretch = 0.05f, feetSpacing = 0f,
             hasTranslationDoF = false,
         };
@@ -513,7 +513,7 @@ class CharacterImportPostprocessor : AssetPostprocessor
         if (!(assetImporter is ModelImporter importer)) return;
         if (!assetPath.StartsWith("Assets/Characters/")) return;
 
-        importer.animationType = ModelImporterAnimationType.Humanoid;
+        importer.animationType = ModelImporterAnimationType.Human;
         importer.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
         importer.importAnimation = true;
         importer.useFileUnits = true;
@@ -604,7 +604,7 @@ class CharacterImportPostprocessor : AssetPostprocessor
         {
             human = human.ToArray(),
             skeleton = new SkeletonBone[0], // Unity derives the skeleton from the model
-            armTwist = 0.5f, foreArmTwist = 0.5f, upperLegTwist = 0.5f, legTwist = 0.5f,
+            upperArmTwist = 0.5f, lowerArmTwist = 0.5f, upperLegTwist = 0.5f, lowerLegTwist = 0.5f,
             armStretch = 0.05f, legStretch = 0.05f, feetSpacing = 0f,
             hasTranslationDoF = false,
         };
