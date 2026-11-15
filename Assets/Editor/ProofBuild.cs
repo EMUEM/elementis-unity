@@ -138,6 +138,25 @@ public static class ProofBuild
     // data. Only a disk asset that cannot be loaded at all is fatal.
     static void VerifySceneWiringOrThrow()
     {
+        // Force fresh imports BEFORE opening the scene. CI restores the
+        // Library cache, and the arena prefab was NEVER re-imported in
+        // any run (fix6/fix7 logs show no Arena.prefab import line) —
+        // its artifact came from the restored cache, which is how a
+        // stale/broken arena can reach the gate and then make
+        // Instantiate(arenaPrefab) throw InvalidCastException (fix7).
+        // ForceUpdate re-imports from the on-disk files, ignoring any
+        // cached artifact. The character prefabs are rebuilt by
+        // CharacterSetup already; re-importing them here is harmless.
+        foreach (var path in new[]
+        {
+            "Assets/Arena/Arena.prefab",
+            "Assets/Characters/Katara.prefab",
+            "Assets/Characters/Azula.prefab",
+            "Assets/Scripts/Data/KataraData.asset",
+            "Assets/Scripts/Data/AzulaData.asset",
+        })
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+        Debug.Log("[ProofBuild] force-reimported arena + character prefabs + data assets (no stale Library cache artifact).");
         EditorSceneManager.OpenScene("Assets/Scenes/Main.unity");
         var fightGo = GameObject.Find("Fight");
         if (fightGo == null)
