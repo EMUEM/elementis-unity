@@ -96,6 +96,30 @@ public class FightBootstrap : MonoBehaviour
         SpawnInitialFight();
     }
 
+    /// <summary>Instantiate a prefab. In play mode this is plain
+    /// Object.Instantiate. In edit mode (the CI smoke test)
+    /// Object.Instantiate on a prefab asset throws InvalidCastException
+    /// in this Unity version (proven in CI runs 43735378088 and
+    // 43737096230: the arena prefab imports cleanly, the reference
+    // resolves to the right path, yet Instantiate(arenaPrefab) throws),
+    // so the editor-sanctioned PrefabUtility.InstantiatePrefab is used
+    // instead; position/rotation are applied afterwards, since
+    /// InstantiatePrefab spawns at the prefab's recorded transform.
+    /// The runtime path is unchanged (play mode = Object.Instantiate).</summary>
+    GameObject InstantiatePrefab(GameObject prefab, Vector3 pos, Quaternion rot)
+    {
+#if UNITY_EDITOR
+        if (!Application.isPlaying)
+        {
+            var go = (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(prefab);
+            go.transform.position = pos;
+            go.transform.rotation = rot;
+            return go;
+        }
+#endif
+        return Instantiate(prefab, pos, rot);
+    }
+
     /// <summary>Arena + default pair + wiring. Shared by Awake (runtime)
     /// and the editor smoke test (ProofBuild) so both exercise the same
     /// path. Returns false if anything failed to spawn.</summary>
@@ -105,7 +129,7 @@ public class FightBootstrap : MonoBehaviour
         GameObject arena = null;
         if (arenaPrefab != null)
         {
-            arena = Instantiate(arenaPrefab, Vector3.zero, Quaternion.identity);
+            arena = InstantiatePrefab(arenaPrefab, Vector3.zero, Quaternion.identity);
             spawnedArena = arena;
         }
         else
@@ -389,7 +413,7 @@ public class FightBootstrap : MonoBehaviour
             Debug.LogError("[FightBootstrap] fighter prefab not wired: " + characterId);
             return null;
         }
-        GameObject go = Instantiate(prefab, pos, Quaternion.Euler(0f, yaw, 0f));
+        GameObject go = InstantiatePrefab(prefab, pos, Quaternion.Euler(0f, yaw, 0f));
         // (The prefab root is already named Katara / Azula.)
 
         // CharacterController capsule (fighter.gd: radius 0.38, height 1.75).
