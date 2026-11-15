@@ -126,27 +126,29 @@ public static class ProofBuild
     // null refs even after CharacterSetup fixed the files on disk — the
     // build would then ship an empty world with zero errors. Fail LOUDLY.
     //
-    // Data assets are special (CI run 43734265750): the scene's
-    // kataraData/azulaData refs deserialize to NULL even though the
-    // .asset files exist, import cleanly, and their GUIDs match the
-    // scene — a deserialization quirk of the hand-authored
-    // ScriptableObject YAML. The fight does NOT depend on them
-    // (FighterController.Setup falls back to FighterDataLibrary.Create,
-    // the same approved numbers), so a null data ref is healed, not
-    // fatal: load the asset directly from disk, assign it to the
-    // bootstrap, and re-save the scene so the build uses the real
-    // data. Only a disk asset that cannot be loaded at all is fatal.
+    // The scene's serialized refs are UNRELIABLE for hand-authored
+    // assets (proven across CI runs 43734265750–43737915056):
+    //   - kataraData/azulaData deserialize to NULL even though the
+    //     .asset files exist, import, and match by GUID.
+    //   - arenaPrefab deserializes NON-null and points at the right
+    //     path, yet Instantiate(arenaPrefab) throws InvalidCastException
+    //     (both Object.Instantiate and PrefabUtility.InstantiatePrefab)
+    //     — the serialized ref does not resolve to the prefab's root
+    //     GameObject.
+    // So the gate does not trust the serialized refs for any asset that
+    // lives on disk: it loads each one directly via
+    // AssetDatabase.LoadAssetAtPath and uses the direct load whenever
+    // the scene ref is null OR differs from it, then re-saves the scene
+    // so the build (and the shipped APK) uses the healed refs. Only a
+    // disk asset that cannot be loaded at all is fatal. The
+    // scene-internal refs (reelCamera, roundManager) have no disk asset
+    // to heal from, so they stay hard-fatal.
     static void VerifySceneWiringOrThrow()
     {
         // Force fresh imports BEFORE opening the scene. CI restores the
-        // Library cache, and the arena prefab was NEVER re-imported in
-        // any run (fix6/fix7 logs show no Arena.prefab import line) —
-        // its artifact came from the restored cache, which is how a
-        // stale/broken arena can reach the gate and then make
-        // Instantiate(arenaPrefab) throw InvalidCastException (fix7).
-        // ForceUpdate re-imports from the on-disk files, ignoring any
-        // cached artifact. The character prefabs are rebuilt by
-        // CharacterSetup already; re-importing them here is harmless.
+        // Library cache; ForceUpdate re-imports from the on-disk files,
+        // ignoring any cached artifact. The character prefabs are rebuilt
+        // by CharacterSetup already; re-importing them here is harmless.
         foreach (var path in new[]
         {
             "Assets/Arena/Arena.prefab",
@@ -164,29 +166,17 @@ public static class ProofBuild
         var bootstrap = fightGo.GetComponent<FightBootstrap>();
         if (bootstrap == null)
             throw new System.Exception("[ProofBuild] 'Fight' has no FightBootstrap component.");
-        if (bootstrap.arenaPrefab == null)
-            throw new System.Exception("[ProofBuild] FightBootstrap.arenaPrefab is NULL in Main.unity — the arena would never instantiate (empty VS screen).");
-        if (bootstrap.kataraPrefab == null)
-            throw new System.Exception("[ProofBuild] FightBootstrap.kataraPrefab is NULL in Main.unity — Katara would never spawn.");
-        if (bootstrap.azulaPrefab == null)
-            throw new System.Exception("[ProofBuild] FightBootstrap.azulaPrefab is NULL in Main.unity — Azula would never spawn.");
         if (bootstrap.reelCamera == null)
             throw new System.Exception("[ProofBuild] FightBootstrap.reelCamera is NULL in Main.unity — no fight camera.");
         if (bootstrap.roundManager == null)
             throw new System.Exception("[ProofBuild] FightBootstrap.roundManager is NULL in Main.unity — BeginMatch would return false and the fight would never start.");
-        // Diagnostic: what did the prefab refs actually resolve to?
-        // (CI run 43735378088: the gate passed all five refs as non-null,
-        // yet Instantiate(arenaPrefab) threw InvalidCastException — the
-        // scene referenced fileID 100100000 but the prefab files' roots
-        // were 2000000000000000001 / 100000. The roots are now
-        // 100100000 in all three files; this log proves the resolution.)
-        Debug.Log("[ProofBuild] arenaPrefab -> " + AssetDatabase.GetAssetPath(bootstrap.arenaPrefab) +
-            " | kataraPrefab -> " + AssetDatabase.GetAssetPath(bootstrap.kataraPrefab) +
-            " | azulaPrefab -> " + AssetDatabase.GetAssetPath(bootstrap.azulaPrefab));
-        // Data refs: diagnose + heal (see the comment above).
+        bool healed = false;
+        healed |= HealPrefabRef("arena", "Assets/Arena/Arena.prefab", ref bootstrap.arenaPrefab);
+        healed |= HealPrefabRef("katara", "Assets/Characters/Katara.prefab", ref bootstrap.kataraPrefab);
+        healed |= HealPrefabRef("azula", "Assets/Characters/Azula.prefab", ref bootstrap.azulaPrefab);
+        // Data refs: diagnose + heal (same pattern as the prefabs).
         Debug.Log("[ProofBuild] scene kataraData ref: " + (bootstrap.kataraData == null ? "NULL" : "ok") +
             " | azulaData ref: " + (bootstrap.azulaData == null ? "NULL" : "ok"));
-        bool healed = false;
         if (bootstrap.kataraData == null)
         {
             bootstrap.kataraData = AssetDatabase.LoadAssetAtPath<FighterData>("Assets/Scripts/Data/KataraData.asset");
@@ -208,9 +198,29 @@ public static class ProofBuild
             var scene = EditorSceneManager.GetActiveScene();
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
-            Debug.LogWarning("[ProofBuild] healed null data ref(s) from the disk .asset files and re-saved Main.unity for this build.");
+            Debug.LogWarning("[ProofBuild] healed ref(s) from the disk assets and re-saved Main.unity for this build.");
         }
         Debug.Log("[ProofBuild] Main.unity wiring verified: arena + both prefabs + both data + camera + rounds.");
+    }
+
+    // Load a prefab directly from disk and use it when the scene's
+    // serialized ref is null or points at a different object. Returns
+    // true when the ref was healed. Logs what the scene ref actually
+    // was, so a wrong-object ref is visible in the CI log.
+    static bool HealPrefabRef(string label, string path, ref GameObject field)
+    {
+        var direct = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+        string sceneInfo = field == null ? "NULL" : ("name='" + field.name + "' path=" + AssetDatabase.GetAssetPath(field));
+        Debug.Log("[ProofBuild] " + label + " scene ref: " + sceneInfo + " | direct load: " + (direct == null ? "NULL" : ("name='" + direct.name + "'")));
+        if (direct == null)
+            throw new System.Exception("[ProofBuild] " + path + " cannot be loaded from disk — the prefab asset itself is broken.");
+        if (field == null || field != direct)
+        {
+            Debug.LogWarning("[ProofBuild] healing " + label + " prefab ref from direct load (scene ref was " + sceneInfo + ").");
+            field = direct;
+            return true;
+        }
+        return false;
     }
 
     // Gate 2: run the real spawn + BeginMatch path for BOTH hero orders

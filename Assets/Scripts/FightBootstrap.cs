@@ -111,7 +111,25 @@ public class FightBootstrap : MonoBehaviour
 #if UNITY_EDITOR
         if (!Application.isPlaying)
         {
-            var go = (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(prefab);
+            // Diagnostic (CI runs 43735378088–43737915056): both
+            // Object.Instantiate and PrefabUtility.InstantiatePrefab
+            // threw InvalidCastException on the arena prefab although
+            // the ref is non-null and points at the right path. Log
+            // exactly what the ref is and what InstantiatePrefab
+            // returns, and fail with a descriptive error instead of a
+            // bare cast exception.
+            Debug.Log("[FightBootstrap] InstantiatePrefab: prefab name='" + (prefab != null ? prefab.name : "NULL") +
+                "' type=" + (prefab != null ? prefab.GetType().FullName : "NULL") +
+                " assetPath=" + (prefab != null ? UnityEditor.AssetDatabase.GetAssetPath(prefab) : "NULL") +
+                " prefabType=" + (prefab != null ? UnityEditor.PrefabUtility.GetPrefabAssetType(prefab).ToString() : "NULL") +
+                " childCount=" + (prefab != null ? prefab.transform.childCount : -1));
+            var inst = UnityEditor.PrefabUtility.InstantiatePrefab(prefab);
+            Debug.Log("[FightBootstrap] InstantiatePrefab returned: " + (inst == null ? "NULL" : inst.GetType().FullName + " name='" + inst.name + "'"));
+            var go = inst as GameObject;
+            if (go == null)
+                throw new System.Exception("[FightBootstrap] InstantiatePrefab returned a non-GameObject (" +
+                    (inst == null ? "null" : inst.GetType().FullName) + ") for prefab '" +
+                    (prefab != null ? prefab.name : "NULL") + "' — the prefab asset's root is not a GameObject.");
             go.transform.position = pos;
             go.transform.rotation = rot;
             return go;
