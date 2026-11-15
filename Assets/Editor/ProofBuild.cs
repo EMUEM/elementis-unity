@@ -59,6 +59,11 @@ public static class ProofBuild
         Debug.Log("PROOF_BUILD_RESULT:" + report.summary.result + " errors:" + report.summary.totalErrors);
         if (report.summary.result != BuildResult.Succeeded)
             throw new System.Exception("Build failed: " + report.summary.result);
+        // game-ci CLI v0.1.75 validateBuild only passes if the build output
+        // contains the literal string "Build succeeded!" (with "!") or a
+        // "# Build results #" section. Unity 6000.0.85f2 prints neither, so
+        // emit the exact string here — ONLY on a genuinely successful build.
+        Debug.Log("Build succeeded!");
         Debug.Log("PROOF_BUILD_DONE");
     }
 }
