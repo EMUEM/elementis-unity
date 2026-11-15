@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 
 /// <summary>
 /// Applies the arena's scene-level atmosphere when the Arena prefab is
