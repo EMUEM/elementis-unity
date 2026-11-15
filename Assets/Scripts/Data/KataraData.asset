@@ -18,7 +18,7 @@ MonoBehaviour:
   topColor: {r: 0.15, g: 0.35, b: 0.65, a: 1}
   accentColor: {r: 0.35, g: 0.75, b: 0.95, a: 1}
   accent2Color: {r: 0.85, g: 0.95, b: 1.0, a: 1}
-  runSpeed: 1.06
+  runSpeed: 1
   punchDamage: 8
   punch2Damage: 10
   kickDamage: 13

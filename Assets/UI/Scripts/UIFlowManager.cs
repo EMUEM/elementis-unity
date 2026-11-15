@@ -71,7 +71,9 @@ public class UIFlowManager : MonoBehaviour
     GameObject bannerLayer;
     Text countdownText, roundBannerText, koBannerText;
     Text versusPlayerName, versusPlayerElement, versusBotName, versusBotElement;
-    Text versusDiffText, versusAutoText;
+    Text versusDiffText, versusAutoText, versusErrorText;
+    Text watchdogErrorText;
+    Button watchdogRetryButton;
     Text matchEndTitle, matchEndScore;
     Button kataraCardButton, azulaCardButton;
     GameObject kataraBorder, azulaBorder;
@@ -83,6 +85,11 @@ public class UIFlowManager : MonoBehaviour
 
     float countdownLeft, roundBannerLeft, koLeft, vsAutoLeft;
     bool vsAutoArmed;
+    // Watchdog (S7): if the fight has not reached Fighting within 5 s
+    // of BeginFight, the start failed — show the error + RETRY instead
+    // of leaving the player on a frozen screen.
+    float fightWatchdogLeft;
+    bool fightWatchdogArmed;
 
     void Awake()
     {
@@ -105,7 +112,10 @@ public class UIFlowManager : MonoBehaviour
         bootstrap = fightGo != null ? fightGo.GetComponent<FightBootstrap>() : null;
         if (bootstrap == null)
         {
-            Debug.LogError("[UIFlowManager] 'Fight' object / FightBootstrap not found — flow cannot start a match.");
+            // No Fight object at all: no arena, no fighters, no flow.
+            // Fail LOUD on the device instead of showing a menu over an
+            // empty skybox (the v0.2.0 failure mode).
+            FightBootstrap.ShowFatalError("The 'Fight' object is missing from the scene — the arena and fighters cannot load.");
         }
         else
         {
@@ -183,6 +193,20 @@ public class UIFlowManager : MonoBehaviour
         UiKit.Rect(koBannerText.gameObject, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
             Vector2.zero, new Vector2(1100f, 150f), new Vector2(0.5f, 0.5f));
         koBannerText.gameObject.SetActive(false);
+        // Watchdog error (S7): shown above the HUD when the fight fails
+        // to start within 5 s of BeginFight, with a RETRY button.
+        watchdogErrorText = UiKit.Label(bannerLayer.transform, "WatchdogErrorText",
+            "The fight did not start — tap RETRY.", 30, new Color(1f, 0.45f, 0.4f));
+        watchdogErrorText.fontStyle = FontStyle.Bold;
+        UiKit.Rect(watchdogErrorText.gameObject, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(0f, 120f), new Vector2(1100f, 44f), new Vector2(0.5f, 0.5f));
+        watchdogErrorText.gameObject.SetActive(false);
+        watchdogRetryButton = UiKit.MakeButton(bannerLayer.transform, "WatchdogRetryButton", "RETRY",
+            new Vector2(360f, 88f), UiKit.Gold, 32, new Color(0.15f, 0.08f, 0.02f), false);
+        UiKit.Rect(watchdogRetryButton.gameObject, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(0f, 20f), new Vector2(360f, 88f), new Vector2(0.5f, 0.5f));
+        watchdogRetryButton.onClick.AddListener(() => { AudioManager.Play("ui_tap"); BeginFight(); });
+        watchdogRetryButton.gameObject.SetActive(false);
     }
 
     // --- Lobby: ONLY a Start option + the live Katara showcase behind ---
@@ -355,10 +379,14 @@ public class UIFlowManager : MonoBehaviour
     }
 
     // --- VS screen: plates, gold VS, BEST OF 3, FIGHT, auto-advance ---
+    // The panel is TRANSPARENT (S7): the face-off (both fighters in the
+    // arena, VS camera) must read through it. The old 0.45-alpha dim hid
+    // the world and turned the empty gradient into the flat grey/brown
+    // the owner saw in v0.2.0. The Image still blocks taps.
     void BuildVersus()
     {
         versusPanel = UiKit.Panel(safeContainer, "VersusPanel",
-            new Color(0.05f, 0.04f, 0.04f, 0.45f));
+            new Color(0f, 0f, 0f, 0f));
         versusPlayerName = UiKit.Label(versusPanel.transform, "PlayerName", "KATARA",
             64, UiKit.KataraBlue);
         versusPlayerName.fontStyle = FontStyle.Bold;
@@ -404,6 +432,16 @@ public class UIFlowManager : MonoBehaviour
         UiKit.Rect(versusAutoText.gameObject, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
             new Vector2(0f, VersusFightBottom - 80f), new Vector2(400f, 30f),
             new Vector2(0.5f, 0.5f));
+        // Start-failure line (S7): shown when BeginFight cannot start
+        // the match, instead of failing silently into logcat.
+        versusErrorText = UiKit.Label(versusPanel.transform, "VersusErrorText",
+            "Could not start the fight — tap FIGHT to retry.", 26,
+            new Color(1f, 0.45f, 0.4f));
+        versusErrorText.fontStyle = FontStyle.Bold;
+        UiKit.Rect(versusErrorText.gameObject, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(0f, VersusFightBottom - 130f), new Vector2(900f, 36f),
+            new Vector2(0.5f, 0.5f));
+        versusErrorText.gameObject.SetActive(false);
         var back = UiKit.MakeButton(versusPanel.transform, "VersusBackButton", "BACK",
             new Vector2(180f, 64f), UiKit.ButtonGrey, 26, Color.white, false);
         UiKit.Rect(back.gameObject, new Vector2(0f, 1f), new Vector2(0f, 1f),
@@ -522,10 +560,17 @@ public class UIFlowManager : MonoBehaviour
     {
         state = FlowState.Lobby;
         Time.timeScale = 1f; // menus run live (no match running to freeze)
-        FreezeFighters(true);
         HideAllPanels();
+        HideWatchdogError(); // banner-layer error is sticky — it must not leak onto the menu
         if (hud != null) hud.Hide();
         if (lobbyPanel != null) lobbyPanel.SetActive(true);
+        // Backdrop: arena + both fighters at their fight spawns, Idle
+        // and Frozen, fight camera framing. ResetForLobby also revives a
+        // fighter who lost the last match (otherwise the KO pose would
+        // stay on the lobby backdrop) and restores the camera from the
+        // VS face-off pose.
+        if (bootstrap != null) bootstrap.ResetForLobby();
+        else FreezeFighters(true);
         // The showcase follows the current player fighter — after a hero
         // swap the spawned player is a different object (BeginMatch).
         if (showcase != null && bootstrap != null && bootstrap.PlayerFighter != null)
@@ -536,9 +581,18 @@ public class UIFlowManager : MonoBehaviour
     void ShowSetup()
     {
         state = FlowState.Setup;
+        Time.timeScale = 1f;
         HideAllPanels();
+        HideWatchdogError();
         if (hud != null) hud.Hide();
         if (setupPanel != null) setupPanel.SetActive(true);
+        // Same backdrop reset as the lobby (VS face-off camera + KO pose
+        // must not leak onto this screen); the showcase keeps running
+        // behind the hero cards.
+        if (bootstrap != null) bootstrap.ResetForLobby();
+        else FreezeFighters(true);
+        if (showcase != null && bootstrap != null && bootstrap.PlayerFighter != null)
+            showcase.SetFighter(bootstrap.PlayerFighter);
         if (showcase != null) showcase.StartShowcase();
     }
 
@@ -546,6 +600,7 @@ public class UIFlowManager : MonoBehaviour
     {
         state = FlowState.Versus;
         HideAllPanels();
+        HideWatchdogError();
         if (hud != null) hud.Hide();
         // Plates reflect the pick — and the fight now spawns exactly this
         // pairing (FightBootstrap.BeginMatch).
@@ -568,10 +623,19 @@ public class UIFlowManager : MonoBehaviour
             versusBotElement.text = other != null ? other.element.ToUpper() + "  •  BOT" : "BOT";
         if (versusDiffText != null)
             versusDiffText.text = "BOT — " + selectedDifficulty.ToString().ToUpper();
+        if (versusErrorText != null) versusErrorText.gameObject.SetActive(false);
         if (versusPanel != null) versusPanel.SetActive(true);
         vsAutoLeft = VersusAutoSeconds;
         vsAutoArmed = true;
-        if (showcase != null) showcase.StartShowcase();
+        // VS FACE-OFF (S7): both fighters to the face-off marks at the
+        // arena centre, VS camera behind fighter A — the approved
+        // fight-scene image, not text over an empty gradient. The lobby
+        // showcase flourishes stop here (they belong to the lobby, and
+        // they would play on the wrong fighter after a hero swap).
+        if (showcase != null) showcase.StopShowcase();
+        if (bootstrap != null) bootstrap.PoseForVersus();
+        if (bootstrap != null && bootstrap.reelCamera != null)
+            bootstrap.reelCamera.SetVsMode(true);
     }
 
     // THE fight start (first fight, rematch, restart-from-pause).
@@ -580,6 +644,7 @@ public class UIFlowManager : MonoBehaviour
         if (bootstrap == null)
         {
             Debug.LogError("[UIFlowManager] BeginFight: FightBootstrap missing — cannot start.");
+            ShowVersusError();
             return;
         }
         string botHeroId = selectedHeroId == "katara" ? "azula" : "katara";
@@ -589,7 +654,12 @@ public class UIFlowManager : MonoBehaviour
         // before binding the HUD.
         if (!bootstrap.BeginMatch(selectedHeroId, botHeroId, selectedDifficulty))
         {
+            // VISIBLE failure (S7): the v0.2.0 build failed here silently
+            // (logcat only) and the VS screen stayed frozen on
+            // "FIGHT STARTS IN 1". Show the error, keep the VS panel and
+            // the FIGHT button armed so the player can retry.
             Debug.LogError("[UIFlowManager] BeginFight: FightBootstrap.BeginMatch failed — cannot start.");
+            ShowVersusError();
             return;
         }
         player = bootstrap.PlayerFighter;
@@ -598,18 +668,47 @@ public class UIFlowManager : MonoBehaviour
         if (player == null || bot == null || rounds == null)
         {
             Debug.LogError("[UIFlowManager] BeginFight: fighters/rounds missing after BeginMatch — cannot start.");
+            ShowVersusError();
             return;
         }
         state = FlowState.Fight;
         vsAutoArmed = false;
         HideAllPanels();
+        HideWatchdogError();
         if (showcase != null) showcase.StopShowcase();
+        // Back to the fight camera (the VS face-off pose is over).
+        if (bootstrap.reelCamera != null)
+        {
+            bootstrap.reelCamera.SetVsMode(false);
+            bootstrap.reelCamera.Snap();
+        }
         if (hud != null)
         {
             hud.Bind(player, bot, rounds, OnPausePressed, MatchSubLabel());
             hud.Show();
         }
         Time.timeScale = 1f;
+        // Watchdog (S7): the match must reach Fighting within 5 s. If
+        // the countdown dies (or never runs), surface RETRY instead of a
+        // frozen fight screen.
+        fightWatchdogLeft = 5f;
+        fightWatchdogArmed = true;
+    }
+
+    // Show the VS start-failure line and keep the VS screen (panel +
+    // FIGHT button) up so the player can retry. The auto-advance stays
+    // disarmed — no retry loop.
+    void ShowVersusError()
+    {
+        if (versusErrorText != null) versusErrorText.gameObject.SetActive(true);
+        vsAutoArmed = false;
+    }
+
+    void HideWatchdogError()
+    {
+        fightWatchdogArmed = false;
+        if (watchdogErrorText != null) watchdogErrorText.gameObject.SetActive(false);
+        if (watchdogRetryButton != null) watchdogRetryButton.gameObject.SetActive(false);
     }
 
     string MatchSubLabel()
@@ -698,6 +797,7 @@ public class UIFlowManager : MonoBehaviour
         state = FlowState.MatchEnd;
         vsAutoArmed = false;
         HideAllPanels();
+        HideWatchdogError();
         if (hud != null) hud.Hide();
         if (countdownText != null) countdownText.gameObject.SetActive(false);
         if (roundBannerText != null) roundBannerText.gameObject.SetActive(false);
@@ -749,6 +849,26 @@ public class UIFlowManager : MonoBehaviour
             {
                 vsAutoArmed = false;
                 BeginFight();
+            }
+        }
+        // Fight-start watchdog (S7): the match must reach Fighting
+        // within 5 s of BeginFight. Runs on unscaled time so it fires
+        // even if the countdown coroutine died. The live check runs
+        // every frame while in Fight state (not only while armed): if
+        // the countdown starts LATE, after the error already showed,
+        // the error + RETRY must clear instead of sitting on the fight.
+        if (state == FlowState.Fight && rounds != null && rounds.Phase == RoundPhase.Fighting)
+        {
+            HideWatchdogError();
+        }
+        else if (fightWatchdogArmed && state == FlowState.Fight)
+        {
+            fightWatchdogLeft -= Time.unscaledDeltaTime;
+            if (fightWatchdogLeft <= 0f)
+            {
+                fightWatchdogArmed = false;
+                if (watchdogErrorText != null) watchdogErrorText.gameObject.SetActive(true);
+                if (watchdogRetryButton != null) watchdogRetryButton.gameObject.SetActive(true);
             }
         }
     }

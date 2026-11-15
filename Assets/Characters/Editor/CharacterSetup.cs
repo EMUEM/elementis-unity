@@ -99,7 +99,7 @@ public static class CharacterSetup
     }
 
     // Controller states in order: (state name, take name, state speed).
-    // Run speed is the CHAR_DATA run_speed (Katara 1.06, Azula 0.96).
+    // Run speed is the CHAR_DATA run_speed (Katara 1.00, Azula 0.96).
     static (string, string)[] StateTable() => new (string, string)[]
     {
         ("Idle", "Idle_Loop"), ("Run", "Sprint_Loop"),
@@ -283,7 +283,7 @@ public static class CharacterSetup
 
         BuildAvatar("Katara", Models + "/Katara.fbx", Bip01Map);
         BuildAvatar("Azula", Models + "/Azula.fbx", Bip01Map);
-        BuildController("Katara", clips, 1.06f);
+        BuildController("Katara", clips, 1.00f);
         BuildController("Azula", clips, 0.96f);
         BuildPrefab("Katara", "Katara");
         BuildPrefab("Azula", "Azula");
@@ -509,8 +509,23 @@ public static class CharacterSetup
     {
         // Katara beads: pale blue + emissive, distinct from the bracers.
         if (charName == "Katara" && rendererName.StartsWith("Katara_Bead")) return "Katara_Bead";
-        if (!MaterialByFbxName.TryGetValue(fbxMatName, out var key)) return charName + "_Robe";
-        switch (key)
+        // NORMALIZE the FBX material name: the Blender costume materials
+        // are named "Azula_Pants", "Azula_Top", "Katara_Robe", ... (capital
+        // + character prefix), but the table below uses bare lowercase
+        // slot names ("top", "pants"). Without this, "Azula_Pants" /
+        // "Azula_Top" missed the table and fell through to the fallback —
+        // and the old fallback was charName + "_Robe", which does NOT
+        // exist for Azula (no Azula_Robe.mat), so her pants / sleeves /
+        // tunic renderers got NULL materials and her body was invisible.
+        // The new fallback is charName + "_Body", which exists for both.
+        string key = (fbxMatName ?? "").ToLowerInvariant();
+        if (key.StartsWith("katara_")) key = key.Substring("katara_".Length);
+        else if (key.StartsWith("azula_")) key = key.Substring("azula_".Length);
+        // Same costume slot under a different name.
+        if (key == "robe" || key == "tunic" || key == "sleeve") key = "top";
+        else if (key == "boot") key = "pants";
+        if (!MaterialByFbxName.TryGetValue(key, out var mapped)) return charName + "_Body";
+        switch (mapped)
         {
             case "TOP": return charName == "Katara" ? "Katara_Robe" : "Azula_Tunic";
             case "TRIM": return "Katara_Trim";
@@ -521,7 +536,7 @@ public static class CharacterSetup
             case "FUR": return "Katara_Fur";
             case "GOLD": return "Azula_Gold";
             case "SASH": return "Azula_Sash";
-            default: return key;
+            default: return mapped;
         }
     }
 }

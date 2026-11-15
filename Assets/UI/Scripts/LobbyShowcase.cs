@@ -74,7 +74,16 @@ public class LobbyShowcase : MonoBehaviour
         Transform t = showcaseFighter.transform;
         Vector3 pos = t.position + Vector3.up * FlourishHeight
             + t.forward * FlourishForward;
-        GameObject fx = ElementisFx.Instance.Spawn("WaterWhip", pos,
+        // Element-aware: Katara flourishes water, Azula flourishes fire
+        // (the showcase fighter is whoever the player picked).
+        string vfx = "WaterWhip";
+        string sfx = "water_whoosh";
+        if (showcaseFighter.Data != null && showcaseFighter.Data.characterId == "azula")
+        {
+            vfx = "FlameSweep";
+            sfx = "fire_whoosh";
+        }
+        GameObject fx = ElementisFx.Instance.Spawn(vfx, pos,
             Quaternion.identity);
         if (fx == null) return;
         // Run the burst on unscaled time (was required when menus ran frozen).
@@ -84,6 +93,6 @@ public class LobbyShowcase : MonoBehaviour
             var main = ps.main;
             main.useUnscaledTime = true;
         }
-        AudioManager.Play("water_whoosh", 0.4f);
+        AudioManager.Play(sfx, 0.4f);
     }
 }

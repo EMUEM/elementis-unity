@@ -34,9 +34,24 @@
 // re-binds the HUD, which re-subscribes fighter events and re-points
 // the touch controls).
 //
+// VS FACE-OFF (2026-11-15 fix): the VS screen shows BOTH fighters
+// facing off in the arena (PoseForVersus), per the approved fight-scene
+// image — not text over an empty gradient. BeginMatch (via
+// RoundManager.StartMatch -> ResetForRound) moves them back to the
+// fight spawns, so no separate "back to spawns" call is needed.
+//
+// FAIL-LOUD (2026-11-15 fix): v0.2.0 shipped an APK whose scene refs
+// resolved to nothing (stale incremental build) — the VS screen was an
+// empty gradient and the fight never started, with the failure visible
+// only in logcat. If any reference is null at Awake, or a fighter
+// fails to spawn, a full-screen error is shown on the device instead
+// of a silent empty scene. The CI build also gates on this
+// (ProofBuild.VerifySceneWiringOrThrow + EditorSmokeTest).
+//
 // The arena brings its own sun/fog (ArenaEnvironment.cs), so Main.unity
 // has no Directional Light.
 using UnityEngine;
+using UnityEngine.UI;
 
 public class FightBootstrap : MonoBehaviour
 {
@@ -56,6 +71,13 @@ public class FightBootstrap : MonoBehaviour
     [Header("Match setup")]
     public BotDifficulty botDifficulty = BotDifficulty.Medium;
 
+    // VS face-off marks (approved fight-scene image composition): the two
+    // fighters stand 5 m apart at the arena centre, facing each other.
+    public static readonly Vector3 VersusAPos = new Vector3(0f, 0f, -2.5f);
+    public const float VersusAYaw = 0f;      // A faces +Z (toward B)
+    public static readonly Vector3 VersusBPos = new Vector3(0f, 0f, 2.5f);
+    public const float VersusBYaw = 180f;    // B faces -Z (toward A)
+
     public FighterController PlayerFighter { get; private set; }
     public FighterController BotFighter { get; private set; }
 
@@ -66,14 +88,30 @@ public class FightBootstrap : MonoBehaviour
     Vector3 spawnBPos = new Vector3(0f, 0f, 6f);
     float spawnBYaw = 180f;
 
+    // The arena instance (kept so the editor smoke test can destroy it).
+    GameObject spawnedArena;
+
     void Awake()
+    {
+        SpawnInitialFight();
+    }
+
+    /// <summary>Arena + default pair + wiring. Shared by Awake (runtime)
+    /// and the editor smoke test (ProofBuild) so both exercise the same
+    /// path. Returns false if anything failed to spawn.</summary>
+    public bool SpawnInitialFight()
     {
         // Arena at the origin.
         GameObject arena = null;
         if (arenaPrefab != null)
+        {
             arena = Instantiate(arenaPrefab, Vector3.zero, Quaternion.identity);
+            spawnedArena = arena;
+        }
         else
-            Debug.LogError("[FightBootstrap] arenaPrefab not wired in Main.unity.");
+        {
+            ShowFatalError("arenaPrefab is not wired in Main.unity — the arena cannot load.");
+        }
 
         // Spawns from the arena markers (fallback = ARENA-NOTES.md values).
         if (arena != null)
@@ -95,6 +133,93 @@ public class FightBootstrap : MonoBehaviour
             spawnBPos, spawnBYaw, isBot: true);
 
         WireFight();
+
+        if (PlayerFighter == null || BotFighter == null)
+        {
+            ShowFatalError("A fighter failed to spawn (Katara prefab / Azula prefab missing from the build). " +
+                "The VS screen and the fight cannot work — reinstall a fixed build.");
+            return false;
+        }
+        return true;
+    }
+
+    /// <summary>VS face-off: move both fighters to the face-off marks at
+    /// the arena centre, facing each other in a ready stance (Frozen,
+    /// Idle). Called by UIFlowManager.ShowVersus. BeginMatch moves them
+    /// back to the fight spawns via RoundManager.ResetForRound.</summary>
+    public void PoseForVersus()
+    {
+        if (PlayerFighter != null)
+        {
+            PlayerFighter.transform.position = VersusAPos;
+            PlayerFighter.transform.rotation = Quaternion.Euler(0f, VersusAYaw, 0f);
+        }
+        if (BotFighter != null)
+        {
+            BotFighter.transform.position = VersusBPos;
+            BotFighter.transform.rotation = Quaternion.Euler(0f, VersusBYaw, 0f);
+        }
+    }
+
+    /// <summary>Lobby backdrop reset: revive + reposition both fighters
+    /// at their fight spawns (Idle, Frozen) and restore the fight camera
+    /// framing. Called by UIFlowManager.ShowLobby. Without this, a
+    /// fighter who lost the last match would stay dead (KO pose) on the
+    /// lobby backdrop, and the camera would stay in the VS face-off pose
+    /// after coming back from the VS screen.</summary>
+    public void ResetForLobby()
+    {
+        if (PlayerFighter != null)
+        {
+            PlayerFighter.ResetForRound(spawnAPos, spawnAYaw);
+            PlayerFighter.Frozen = true;
+        }
+        if (BotFighter != null)
+        {
+            BotFighter.ResetForRound(spawnBPos, spawnBYaw);
+            BotFighter.Frozen = true;
+        }
+        if (reelCamera != null)
+        {
+            reelCamera.SetVsMode(false);
+            reelCamera.Snap();
+        }
+    }
+
+    /// <summary>Fail-loud on-device error: a full-screen message instead
+    /// of a silent empty scene. Only used when the fight cannot be built
+    /// at all (missing prefab references). Standalone canvas so it works
+    /// even before the UI flow builds its own canvas.</summary>
+    public static void ShowFatalError(string message)
+    {
+        Debug.LogError("[FightBootstrap] FATAL: " + message);
+        var canvasGo = new GameObject("FightBootstrapFatalError");
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 1000;
+        var bgGo = new GameObject("Background");
+        bgGo.transform.SetParent(canvasGo.transform, false);
+        var bg = bgGo.AddComponent<Image>();
+        bg.color = new Color(0.08f, 0.02f, 0.02f, 0.92f);
+        var bgRect = bgGo.GetComponent<RectTransform>();
+        bgRect.anchorMin = Vector2.zero;
+        bgRect.anchorMax = Vector2.one;
+        bgRect.offsetMin = Vector2.zero;
+        bgRect.offsetMax = Vector2.zero;
+        var textGo = new GameObject("ErrorText");
+        textGo.transform.SetParent(canvasGo.transform, false);
+        var text = textGo.AddComponent<Text>();
+        text.text = "ELEMENTIS could not start the fight.\n\n" + message;
+        text.fontSize = 40;
+        text.color = new Color(1f, 0.45f, 0.4f);
+        text.alignment = TextAnchor.MiddleCenter;
+        text.horizontalOverflow = HorizontalWrapMode.Wrap;
+        text.verticalOverflow = VerticalWrapMode.Truncate;
+        var textRect = textGo.GetComponent<RectTransform>();
+        textRect.anchorMin = new Vector2(0.1f, 0.2f);
+        textRect.anchorMax = new Vector2(0.9f, 0.8f);
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
     }
 
     /// <summary>
@@ -142,6 +267,15 @@ public class FightBootstrap : MonoBehaviour
                 botPrefab, botData, botHeroId);
         }
 
+        // The respawn can fail (null prefab in the build) — never start a
+        // match with missing fighters: the caller would show a frozen VS
+        // screen with no way forward (the v0.2.0 failure).
+        if (PlayerFighter == null || BotFighter == null)
+        {
+            Debug.LogError("[FightBootstrap] BeginMatch: fighters missing after spawn — cannot start.");
+            return false;
+        }
+
         roundManager.StartMatch(); // fresh match + 3-2-1 countdown
         return true;
     }
@@ -185,14 +319,14 @@ public class FightBootstrap : MonoBehaviour
             PlayerFighter.Frozen = true;
             var oldBridge = PlayerFighter.GetComponent<PlayerInputBridge>();
             if (oldBridge != null) oldBridge.enabled = false;
-            Destroy(PlayerFighter.gameObject);
+            DestroyFighterObject(PlayerFighter.gameObject);
         }
         if (BotFighter != null)
         {
             BotFighter.Frozen = true;
             var oldBot = BotFighter.GetComponent<BotAI>();
             if (oldBot != null) oldBot.enabled = false;
-            Destroy(BotFighter.gameObject);
+            DestroyFighterObject(BotFighter.gameObject);
         }
 
         PlayerFighter = SpawnFighter(playerPrefab, playerData, playerId,
@@ -200,6 +334,17 @@ public class FightBootstrap : MonoBehaviour
         BotFighter = SpawnFighter(botPrefab, botData, botId,
             spawnBPos, spawnBYaw, isBot: true);
         WireFight();
+    }
+
+    // Destroy now in the editor (Destroy is deferred to end of frame,
+    // which never comes in edit mode); Destroy at runtime as usual.
+    static void DestroyFighterObject(GameObject go)
+    {
+        if (go == null) return;
+#if UNITY_EDITOR
+        if (!Application.isPlaying) { Object.DestroyImmediate(go); return; }
+#endif
+        Object.Destroy(go);
     }
 
     // Opponents, camera targets, RoundManager fighters + spawns.
@@ -274,4 +419,96 @@ public class FightBootstrap : MonoBehaviour
         }
         return fighter;
     }
+
+#if UNITY_EDITOR
+    /// <summary>CI smoke test (edit mode, called by ProofBuild): spawns
+    /// the arena + default pair through the real SpawnInitialFight path,
+    /// then starts a match with BOTH hero orders and asserts BeginMatch
+    /// returns true, the fighters exist with a valid Animator / human
+    /// Avatar / controller, and RoundManager reaches Countdown. This is
+    /// the exact v0.2.0 failure (null prefabs -> the fight never starts)
+    /// caught before an APK is built. Cleans up after itself (destroys
+    /// the spawned arena + fighters immediately).</summary>
+    public bool EditorSmokeTest(out string error)
+    {
+        error = null;
+        if (!SpawnInitialFight())
+        {
+            error = "SpawnInitialFight failed (arena or a fighter prefab did not spawn).";
+            CleanupSmokeTest();
+            return false;
+        }
+        if (!AssertSmokeFighter(PlayerFighter, "katara", out error)) { CleanupSmokeTest(); return false; }
+        if (!AssertSmokeFighter(BotFighter, "azula", out error)) { CleanupSmokeTest(); return false; }
+        // Azula as player — the owner's pick, and the order that failed.
+        if (!BeginMatch("azula", "katara", BotDifficulty.Easy))
+        {
+            error = "BeginMatch(azula-player, katara-bot) returned false.";
+            CleanupSmokeTest(); return false;
+        }
+        if (!AssertSmokeFighter(PlayerFighter, "azula", out error)) { CleanupSmokeTest(); return false; }
+        if (!AssertSmokeFighter(BotFighter, "katara", out error)) { CleanupSmokeTest(); return false; }
+        if (roundManager == null || roundManager.Phase != RoundPhase.Countdown)
+        {
+            error = "RoundManager.Phase is not Countdown after BeginMatch(azula-player).";
+            CleanupSmokeTest(); return false;
+        }
+        // Katara as player.
+        if (!BeginMatch("katara", "azula", BotDifficulty.Easy))
+        {
+            error = "BeginMatch(katara-player, azula-bot) returned false.";
+            CleanupSmokeTest(); return false;
+        }
+        if (!AssertSmokeFighter(PlayerFighter, "katara", out error)) { CleanupSmokeTest(); return false; }
+        if (!AssertSmokeFighter(BotFighter, "azula", out error)) { CleanupSmokeTest(); return false; }
+        if (roundManager == null || roundManager.Phase != RoundPhase.Countdown)
+        {
+            error = "RoundManager.Phase is not Countdown after BeginMatch(katara-player).";
+            CleanupSmokeTest(); return false;
+        }
+        CleanupSmokeTest();
+        return true;
+    }
+
+    bool AssertSmokeFighter(FighterController fighter, string wantId, out string error)
+    {
+        error = null;
+        if (fighter == null)
+        {
+            error = "fighter '" + wantId + "' is null after spawn.";
+            return false;
+        }
+        if (fighter.Data == null || fighter.Data.characterId != wantId)
+        {
+            error = "fighter is '" + (fighter.Data != null ? fighter.Data.characterId : "null") +
+                "', expected '" + wantId + "'.";
+            return false;
+        }
+        if (fighter.Animator == null)
+        {
+            error = "fighter '" + wantId + "' has no Animator.";
+            return false;
+        }
+        if (fighter.Animator.avatar == null || !fighter.Animator.avatar.isHuman)
+        {
+            error = "fighter '" + wantId + "' has no valid human Avatar.";
+            return false;
+        }
+        if (fighter.Animator.runtimeAnimatorController == null)
+        {
+            error = "fighter '" + wantId + "' has no AnimatorController.";
+            return false;
+        }
+        return true;
+    }
+
+    void CleanupSmokeTest()
+    {
+        if (PlayerFighter != null) DestroyFighterObject(PlayerFighter.gameObject);
+        if (BotFighter != null) DestroyFighterObject(BotFighter.gameObject);
+        PlayerFighter = null;
+        BotFighter = null;
+        if (spawnedArena != null) { Object.DestroyImmediate(spawnedArena); spawnedArena = null; }
+    }
+#endif
 }

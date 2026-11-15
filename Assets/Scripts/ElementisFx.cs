@@ -90,4 +90,93 @@ public class ElementisFx : MonoBehaviour
         GameObject prefab;
         return byName != null && byName.TryGetValue(prefabName, out prefab) && prefab != null;
     }
+
+    /// <summary>Surf spout (REA S4): a translucent water column + spiral
+    /// spray + foam ring that follows the fighter while surfing (Katara,
+    /// reel 4 — "ride a translucent water wave, crouched"). Built
+    /// procedurally — there is no authored spout prefab — and it reuses
+    /// the water glow material from the WaterBlast prefab so it matches
+    /// the existing water look. Loops until the caller destroys it
+    /// (FighterController.OnSurfEnded / ResetForRound).</summary>
+    public GameObject SpawnSurfSpout(Vector3 position, Transform parent)
+    {
+        var go = new GameObject("SurfSpout");
+        go.transform.position = position;
+        if (parent != null) go.transform.SetParent(parent); // keeps world position, follows the fighter
+        Material glow = WaterGlowMaterial();
+
+        // Rising column: a straight translucent water jet.
+        var column = AddSpoutParticles(go, "Column",
+            new Vector3(0f, 0.9f, 0f), glow,
+            new Color(0.45f, 0.85f, 1.0f, 0.55f),
+            60f, 0.8f, 4f, 0.45f, 0.35f, 0f);
+        // Spiral spray: a wider mist cone around the column.
+        var spray = AddSpoutParticles(go, "Spray",
+            new Vector3(0f, 0.5f, 0f), glow,
+            new Color(0.85f, 0.95f, 1.0f, 0.4f),
+            40f, 0.6f, 2.5f, 0.35f, 0.55f, 25f);
+        // Foam ring at the base: a flat white disc.
+        var foam = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        foam.name = "FoamRing";
+        foam.transform.SetParent(go.transform, false);
+        foam.transform.localPosition = new Vector3(0f, 0.02f, 0f);
+        foam.transform.localScale = new Vector3(1.2f, 0.03f, 1.2f);
+        var col = foam.GetComponent<Collider>();
+        if (col != null) Object.Destroy(col);
+        var foamRend = foam.GetComponent<Renderer>();
+        if (foamRend != null)
+        {
+            // Unlit transparent (Sprites/Default handles alpha natively).
+            var foamMat = new Material(Shader.Find("Sprites/Default"));
+            foamMat.color = new Color(0.9f, 0.97f, 1.0f, 0.55f);
+            foamRend.sharedMaterial = foamMat;
+        }
+        return go;
+    }
+
+    // One looping particle jet for the spout. All values are the water
+    // look from the existing VFX (translucent + additive glow).
+    ParticleSystem AddSpoutParticles(GameObject parent, string name, Vector3 localPos,
+        Material material, Color color, float rate, float lifetime, float speed,
+        float size, float radius, float coneAngleDeg)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent.transform, false);
+        go.transform.localPosition = localPos;
+        var ps = go.AddComponent<ParticleSystem>();
+        var main = ps.main;
+        main.duration = 1f;
+        main.loop = true;
+        main.startLifetime = lifetime;
+        main.startSpeed = speed;
+        main.startSize = size;
+        main.startColor = color;
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.maxParticles = 200;
+        var emission = ps.emission;
+        emission.rateOverTime = rate;
+        var shape = ps.shape;
+        shape.shapeType = ParticleSystemShapeType.Cone;
+        shape.radius = radius;
+        shape.angle = coneAngleDeg;
+        var rend = go.GetComponent<ParticleSystemRenderer>();
+        if (rend != null && material != null) rend.sharedMaterial = material;
+        ps.Play();
+        return ps;
+    }
+
+    // The water glow material from the WaterBlast prefab (the same
+    // additive glow the other water VFX use). Falls back to a plain
+    // unlit transparent material if the prefab is not wired.
+    Material WaterGlowMaterial()
+    {
+        if (waterBlast != null)
+        {
+            var rend = waterBlast.GetComponentInChildren<ParticleSystemRenderer>();
+            if (rend != null && rend.sharedMaterial != null) return rend.sharedMaterial;
+        }
+        var fallback = new Material(Shader.Find("Sprites/Default"));
+        fallback.color = new Color(0.45f, 0.85f, 1.0f, 0.55f);
+        return fallback;
+    }
 }

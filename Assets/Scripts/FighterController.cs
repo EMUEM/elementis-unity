@@ -109,6 +109,14 @@ public class FighterController : MonoBehaviour
     Vector3 moveWishWorld;
     string lastAnimClip = "";
 
+    // Hit-flash + backflip caches (REA S2/S3).
+    SkinnedMeshRenderer[] bodyRenderers;
+    Transform modelRoot;                 // topmost transform under the fighter root (the FBX model)
+    Quaternion baseModelRotation = Quaternion.identity;
+    MaterialPropertyBlock flashBlock;
+    float flashUntilUnscaled;
+    bool flipApplied;
+
     // Cooldowns: 0 punch, 1 kick, 2..5 skill1..4, 6 dash, 7 dodge.
     readonly float[] cds = new float[8];
 
@@ -127,6 +135,30 @@ public class FighterController : MonoBehaviour
         Controller = GetComponent<CharacterController>();
         Animator = GetComponent<Animator>();
         if (Kit == null) Kit = new MovementKit(this);
+        // Hit-flash renderers + the model root for the backflip visual.
+        bodyRenderers = GetComponentsInChildren<SkinnedMeshRenderer>(true);
+        flashBlock = new MaterialPropertyBlock();
+        modelRoot = FindModelRoot();
+        if (modelRoot != null) baseModelRotation = modelRoot.localRotation;
+    }
+
+    // The model root is the topmost transform under the fighter root on
+    // the path to the Hips bone (the FBX container, not a bone — the
+    // Animator drives bones, not this transform, so rotating it for the
+    // backflip does not fight the animation).
+    Transform FindModelRoot()
+    {
+        if (Animator != null)
+        {
+            Transform hips = Animator.GetBoneTransform(HumanBodyBones.Hips);
+            if (hips != null)
+            {
+                Transform t = hips;
+                while (t.parent != null && t.parent != transform) t = t.parent;
+                if (t != transform) return t;
+            }
+        }
+        return transform.childCount > 0 ? transform.GetChild(0) : null;
     }
 
     public void SetOpponent(FighterController opponent)
@@ -483,6 +515,15 @@ public class FighterController : MonoBehaviour
         if (HealthChanged != null) HealthChanged(Health, MaxHealth);
         if (TookHit != null) TookHit();
 
+        // Hit punctuation (REA S3): a landed hit freezes the fight for a
+        // few dozen ms and flashes the victim white for 80 ms. A perfect
+        // block (finalAmount 0) is a successful defence — no freeze.
+        if (finalAmount > 0f)
+        {
+            HitStop.Freeze(HitStop.ForDamage(finalAmount));
+            StartFlash();
+        }
+
         // Ultimate meter: dealing damage, taking damage, landing skills.
         if (attacker != null) attacker.AddUltimatePoints(finalAmount * 0.6f);
         AddUltimatePoints(finalAmount * 0.4f);
@@ -532,6 +573,67 @@ public class FighterController : MonoBehaviour
     void CancelRegenSilent()
     {
         DestroyFx(ref regenAuraInstance);
+    }
+
+    // ------------------------------------------------------------------
+    // Per-frame (rendered): hit-flash timer + backflip visual. Update
+    // runs even while timeScale is 0 (hit-stop / pause), and the flash
+    // is driven by UNSCALED time so it always clears.
+    // ------------------------------------------------------------------
+    void Update()
+    {
+        if (flashUntilUnscaled > 0f && Time.unscaledTime >= flashUntilUnscaled)
+        {
+            flashUntilUnscaled = 0f;
+            ClearFlash();
+        }
+        UpdateBackflip();
+    }
+
+    // White flash for 80 ms on a landed hit (REA S3): albedo + emission
+    // pushed to white through a MaterialPropertyBlock (per-renderer, so
+    // the shared materials are untouched; clearing the block restores
+    // the material's own colours).
+    void StartFlash()
+    {
+        if (bodyRenderers == null || bodyRenderers.Length == 0 || flashBlock == null) return;
+        flashUntilUnscaled = Time.unscaledTime + 0.08f;
+        flashBlock.SetColor("_BaseColor", Color.white);
+        flashBlock.SetColor("_EmissionColor", Color.white);
+        foreach (var r in bodyRenderers)
+        {
+            if (r != null) r.SetPropertyBlock(flashBlock);
+        }
+    }
+
+    void ClearFlash()
+    {
+        if (bodyRenderers == null) return;
+        foreach (var r in bodyRenderers)
+        {
+            if (r != null) r.SetPropertyBlock(null);
+        }
+    }
+
+    // Double-jump backflip visual (REA S2): while the kit reports a flip
+    // in progress, rotate the model root a full -360 deg around its local
+    // X axis (ease-in-out over the 0.45 s flip), then restore the base
+    // rotation. The Animator drives the bones, not this transform.
+    void UpdateBackflip()
+    {
+        if (modelRoot == null) return;
+        if (Kit != null && Kit.FlipTimeRemaining > 0f)
+        {
+            float p = Mathf.Clamp01(1f - Kit.FlipTimeRemaining / 0.45f);
+            float eased = p * p * (3f - 2f * p);
+            modelRoot.localRotation = baseModelRotation * Quaternion.AngleAxis(-360f * eased, Vector3.right);
+            flipApplied = true;
+        }
+        else if (flipApplied)
+        {
+            modelRoot.localRotation = baseModelRotation;
+            flipApplied = false;
+        }
     }
 
     // ------------------------------------------------------------------
@@ -687,16 +789,20 @@ public class FighterController : MonoBehaviour
         if (fx == null) return;
         var proj = fx.AddComponent<SkillProjectile>();
         Vector3 dir = (target - fx.transform.position).normalized;
+        // Water arcs (REA S4); Azula's fireball flies straight and fast.
+        float arc = Data.characterId == "katara" ? 1.2f : 0f;
         proj.Launch(this, Opponent, skill.damage, 7f, 22f, 5f, 1.2f,
-            skill.hitSound, "HitSparks", dir);
+            skill.hitSound, "HitSparks", dir, arc);
     }
 
     void ApplySkill2()
     {
         var skill = Data.GetSkill(1);
         AudioManager.Play(skill.castSound, 0.9f);
+        // Water/fire comes FROM the hand (REA S4: "water follows arms") —
+        // the whip is released from the casting hand, not the body centre.
         if (ElementisFx.Instance != null)
-            ElementisFx.Instance.Spawn(skill.vfxPrefab, SelfCenter(), FacingRotation());
+            ElementisFx.Instance.Spawn(skill.vfxPrefab, HandPosition(), FacingRotation());
         if (MeleeHit(skill.damage, skill.range, 150f, 7f, true))
             AudioManager.Play(skill.hitSound, 0.9f);
     }
@@ -747,8 +853,9 @@ public class FighterController : MonoBehaviour
                 Quaternion.LookRotation(fwd));
             if (fx == null || Opponent == null) return;
             var proj = fx.AddComponent<SkillProjectile>();
+            // The wave travels as an arcing wall of water (REA S4).
             proj.Launch(this, Opponent, skill.damage, 6f, 10f, 5f, 2.0f,
-                skill.hitSound, "HitSparks", fwd);
+                skill.hitSound, "HitSparks", fwd, 1.0f);
             AudioManager.Play("wave_rumble", 0.7f);
         }
         else
@@ -921,7 +1028,15 @@ public class FighterController : MonoBehaviour
         AudioManager.Play("water_whoosh", 0.8f);
         AudioManager.Play("wave_rumble", 0.6f);
         if (surfFxPrefab != null)
+        {
             surfFxInstance = Instantiate(surfFxPrefab, SelfGround(), Quaternion.identity, transform);
+        }
+        else if (ElementisFx.Instance != null)
+        {
+            // No authored spout prefab: build the translucent water
+            // column + spiral spray procedurally (ElementisFx).
+            surfFxInstance = ElementisFx.Instance.SpawnSurfSpout(SelfGround(), transform);
+        }
     }
 
     public void OnSurfEnded()

@@ -399,7 +399,10 @@ public class FightHud : MonoBehaviour
     void OnTimingShown(string text, float seconds, bool perfect)
     {
         if (timingText == null) return;
-        timingText.text = text;
+        // The number is the MEASURED block time (REA S3 — mirrors the
+        // QTE reel's "DEFLECT! (0.20 s)" readout). COUNTER fires with
+        // seconds = 0 and shows no time.
+        timingText.text = seconds > 0.001f ? text + " " + seconds.ToString("0.00") + "s" : text;
         timingText.color = perfect ? UiKit.Gold : Color.white;
         timingText.gameObject.SetActive(true);
         timingLeft = 1.0f;

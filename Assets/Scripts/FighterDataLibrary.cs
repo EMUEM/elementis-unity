@@ -25,7 +25,7 @@ public static class FighterDataLibrary
         d.topColor = new Color(0.15f, 0.35f, 0.65f);
         d.accentColor = new Color(0.35f, 0.75f, 0.95f);
         d.accent2Color = new Color(0.85f, 0.95f, 1.0f);
-        d.runSpeed = 1.06f;
+        d.runSpeed = 1.00f;
         d.punchDamage = 8f; d.punch2Damage = 10f; d.kickDamage = 13f; d.finisherDamage = 22f;
         d.punchCooldown = 0.35f; d.kickCooldown = 0.55f;
         d.skills = new SkillDef[4];

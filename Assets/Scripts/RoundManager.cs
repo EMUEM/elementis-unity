@@ -85,7 +85,11 @@ public class RoundManager : MonoBehaviour
         fighterB.Frozen = true;
         if (RoundStarted != null) RoundStarted(RoundNumber);
         if (roundRoutine != null) StopCoroutine(roundRoutine);
-        roundRoutine = StartCoroutine(CountdownRoutine());
+        // Coroutines only run in play mode; in the editor smoke test
+        // (ProofBuild) Phase is already Countdown synchronously, which is
+        // what the test asserts — the countdown itself is a runtime path.
+        if (Application.isPlaying) roundRoutine = StartCoroutine(CountdownRoutine());
+        else roundRoutine = null;
     }
 
     IEnumerator CountdownRoutine()
@@ -98,6 +102,15 @@ public class RoundManager : MonoBehaviour
         }
         if (CountdownTick != null) CountdownTick(0); // FIGHT
         AudioManager.Play("countdown_beep", 1f, 1.25f);
+        // If a fighter vanished mid-countdown (destroyed by a hero swap
+        // that failed), never leave the match in a half-started state:
+        // stay in Countdown and let the UI watchdog surface the failure
+        // instead of unfreezing a null fighter and dying silently.
+        if (fighterA == null || fighterB == null)
+        {
+            Debug.LogError("[RoundManager] countdown finished but a fighter is missing — not starting the fight.");
+            yield break;
+        }
         Phase = RoundPhase.Fighting;
         fighterA.Frozen = false;
         fighterB.Frozen = false;
@@ -148,7 +161,8 @@ public class RoundManager : MonoBehaviour
         if (winner != null) AudioManager.Play("round_win_chime", 0.9f);
         if (RoundEnded != null) RoundEnded(winner, reason);
         if (roundRoutine != null) StopCoroutine(roundRoutine);
-        roundRoutine = StartCoroutine(AfterRoundRoutine(winner));
+        if (Application.isPlaying) roundRoutine = StartCoroutine(AfterRoundRoutine(winner));
+        else roundRoutine = null;
     }
 
     IEnumerator AfterRoundRoutine(FighterController winner)

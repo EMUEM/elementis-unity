@@ -159,8 +159,14 @@ public class MovementKit
                     && Vector3.Dot(wish.normalized, toOpp.normalized) > 0.5f)
                     wish *= 1.15f;
             }
+            // MOMENTUM (REA S2 — Tachyon's lesson): acceleration 40/s^2
+            // and deceleration 25/s^2 on the ground (was a snappy 65/45
+            // MoveTowards), air control 0.6x, so speed is earned and kept
+            // through jumps instead of snapping. Sprint still builds over
+            // ~0.4 s of sustained full tilt (see above).
             float rate = (new Vector2(wish.x, wish.z).magnitude
-                > new Vector2(vel.x, vel.z).magnitude + 0.1f) ? 65f : 45f;
+                > new Vector2(vel.x, vel.z).magnitude + 0.1f) ? 40f : 25f;
+            if (!grounded) rate *= 0.6f; // air control
             vel.x = Mathf.MoveTowards(vel.x, wish.x, rate * dt);
             vel.z = Mathf.MoveTowards(vel.z, wish.z, rate * dt);
         }
@@ -243,8 +249,11 @@ public class MovementKit
         Diving = false;
         if (impactVy < -8f)
         {
-            // Hard landing: big white dust puff + low crouch.
+            // Hard landing: big white dust puff + low crouch + the landing
+            // zeroes horizontal speed (momentum rule — only a hard landing
+            // kills your speed; a jump preserves it).
             LandCrouchRemaining = 0.4f;
+            Velocity = new Vector3(0f, Velocity.y, 0f);
             owner.OnHardLanding(true);
         }
         else if (impactVy < -4f)
@@ -306,6 +315,7 @@ public class MovementKit
 
     public Vector3 WallTangent { get { return wallTangent; } }
     public Vector3 WallNormal { get { return wallNormal; } }
+    public Vector3 DodgeDirection { get { return dodgeDir; } }
 
     /// <summary>Knockback from TakeDamage: added to the current velocity,
     /// then decayed by the movement update (the hit slide).</summary>

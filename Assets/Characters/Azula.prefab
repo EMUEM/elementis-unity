@@ -1,9 +1,3 @@
-# NOTE — best-effort hand-authored prefab. The Animator's m_Avatar and the
-# FBX model child are PLACEHOLDERS: FBX sub-asset fileIDs (Avatar, meshes)
-# cannot be predicted by hand. Run Elementis > Characters > Setup Characters
-# (Assets/Characters/Editor/CharacterSetup.cs) in the Editor — it attaches
-# the FBX model, the built Avatar, and the URP/Lit materials, and re-saves
-# this prefab. The Animator -> controller link below IS real (GUID-based).
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!1 &100000
