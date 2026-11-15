@@ -45,7 +45,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-#if UNITY_INPUT_SYSTEM
+#if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem.OnScreen;
 #endif
 
@@ -106,7 +106,7 @@ public class TouchControls : MonoBehaviour, IPointerDownHandler, IDragHandler,
 
     RectTransform joyBase;
     RectTransform joyKnob;
-#if UNITY_INPUT_SYSTEM
+#if ENABLE_INPUT_SYSTEM
     OnScreenStick stick;
 #endif
     bool stickRangeApplied;
@@ -157,7 +157,7 @@ public class TouchControls : MonoBehaviour, IPointerDownHandler, IDragHandler,
         knob.raycastTarget = false;
         joyKnob = UiKit.Rect(knobGo, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
             Vector2.zero, new Vector2(JoyKnobSize, JoyKnobSize), new Vector2(0.5f, 0.5f));
-#if UNITY_INPUT_SYSTEM
+#if ENABLE_INPUT_SYSTEM
         stick = joyGo.AddComponent<OnScreenStick>();
         stick.controlPath = "<Gamepad>/leftStick";
         stick.movementRange = JoyMoveRange; // refined x scaleFactor in Update
@@ -303,7 +303,7 @@ public class TouchControls : MonoBehaviour, IPointerDownHandler, IDragHandler,
             bg, fontSize, Color.white, circular: true);
         UiKit.Rect(btn.gameObject, new Vector2(1f, 0f), new Vector2(1f, 0f),
             centreFromBottomRight, new Vector2(size, size), new Vector2(0.5f, 0.5f));
-#if UNITY_INPUT_SYSTEM
+#if ENABLE_INPUT_SYSTEM
         var osc = btn.gameObject.AddComponent<OnScreenButton>();
         osc.controlPath = controlPath;
 #else
@@ -341,7 +341,7 @@ public class TouchControls : MonoBehaviour, IPointerDownHandler, IDragHandler,
     public void OnPointerUp(PointerEventData data)
     {
         if (joyKnob != null) joyKnob.anchoredPosition = Vector2.zero;
-#if !UNITY_INPUT_SYSTEM
+#if !ENABLE_INPUT_SYSTEM
         if (bridge != null) bridge.UiMove(Vector2.zero);
 #endif
     }
@@ -355,7 +355,7 @@ public class TouchControls : MonoBehaviour, IPointerDownHandler, IDragHandler,
         float range = JoyMoveRange * (canvas != null ? canvas.scaleFactor : 1f);
         Vector2 clamped = Vector2.ClampMagnitude(local, range);
         joyKnob.anchoredPosition = clamped;
-#if !UNITY_INPUT_SYSTEM
+#if !ENABLE_INPUT_SYSTEM
         if (bridge != null) bridge.UiMove(clamped / range);
 #endif
     }
@@ -363,7 +363,7 @@ public class TouchControls : MonoBehaviour, IPointerDownHandler, IDragHandler,
     void Update()
     {
         CheckControlsResolved();
-#if UNITY_INPUT_SYSTEM
+#if ENABLE_INPUT_SYSTEM
         // OnScreenStick.movementRange is in screen px; the reference-space
         // 110 px must be scaled by the CanvasScaler factor (1.0 at 1080p).
         if (!stickRangeApplied && stick != null && canvas != null)
@@ -384,7 +384,7 @@ public class TouchControls : MonoBehaviour, IPointerDownHandler, IDragHandler,
     // in logcat instead of silent.
     void CheckControlsResolved()
     {
-#if UNITY_INPUT_SYSTEM
+#if ENABLE_INPUT_SYSTEM
         if (controlsChecked || controlsParent == null) return;
         controlsChecked = true;
         var buttons = controlsParent.GetComponentsInChildren<OnScreenButton>(true);

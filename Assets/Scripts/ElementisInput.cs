@@ -33,7 +33,7 @@
 // The touch UI's direct Try* calls work regardless of that setting.
 using System;
 using UnityEngine;
-#if UNITY_INPUT_SYSTEM
+#if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
 
@@ -82,7 +82,7 @@ public class ElementisInput : MonoBehaviour
     void Awake()
     {
         Instance = this;
-#if UNITY_INPUT_SYSTEM
+#if ENABLE_INPUT_SYSTEM
         if (actionsAsset == null)
         {
             Debug.LogWarning("[ElementisInput] action asset not wired — building the fallback asset.");
@@ -116,7 +116,7 @@ public class ElementisInput : MonoBehaviour
         if (Instance == this) Instance = null;
     }
 
-#if UNITY_INPUT_SYSTEM
+#if ENABLE_INPUT_SYSTEM
     void Wire()
     {
         MoveAction.performed += ctx => { MoveValue = ctx.ReadValue<Vector2>(); if (MoveChanged != null) MoveChanged(MoveValue); };

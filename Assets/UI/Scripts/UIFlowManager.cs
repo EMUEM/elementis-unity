@@ -28,7 +28,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-#if UNITY_INPUT_SYSTEM
+#if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem.UI;
 #endif
 
@@ -131,7 +131,7 @@ public class UIFlowManager : MonoBehaviour
         if (EventSystem.current != null) return;
         var go = new GameObject("EventSystem");
         go.AddComponent<EventSystem>();
-#if UNITY_INPUT_SYSTEM
+#if ENABLE_INPUT_SYSTEM
         // No actions asset assigned: InputSystemUIInputModule assigns its
         // built-in default UI actions in OnEnable (verified in the 1.14.0
         // package source). Multi-touch works: each finger is a pointer.
