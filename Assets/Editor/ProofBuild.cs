@@ -155,6 +155,15 @@ public static class ProofBuild
             throw new System.Exception("[ProofBuild] FightBootstrap.reelCamera is NULL in Main.unity — no fight camera.");
         if (bootstrap.roundManager == null)
             throw new System.Exception("[ProofBuild] FightBootstrap.roundManager is NULL in Main.unity — BeginMatch would return false and the fight would never start.");
+        // Diagnostic: what did the prefab refs actually resolve to?
+        // (CI run 43735378088: the gate passed all five refs as non-null,
+        // yet Instantiate(arenaPrefab) threw InvalidCastException — the
+        // scene referenced fileID 100100000 but the prefab files' roots
+        // were 2000000000000000001 / 100000. The roots are now
+        // 100100000 in all three files; this log proves the resolution.)
+        Debug.Log("[ProofBuild] arenaPrefab -> " + AssetDatabase.GetAssetPath(bootstrap.arenaPrefab) +
+            " | kataraPrefab -> " + AssetDatabase.GetAssetPath(bootstrap.kataraPrefab) +
+            " | azulaPrefab -> " + AssetDatabase.GetAssetPath(bootstrap.azulaPrefab));
         // Data refs: diagnose + heal (see the comment above).
         Debug.Log("[ProofBuild] scene kataraData ref: " + (bootstrap.kataraData == null ? "NULL" : "ok") +
             " | azulaData ref: " + (bootstrap.azulaData == null ? "NULL" : "ok"));
