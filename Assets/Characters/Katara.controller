@@ -1,0 +1,453 @@
+# NOTE — best-effort hand-authored controller. The m_Motion references
+# below are {fileID: 0} PLACEHOLDERS: FBX AnimationClip sub-asset fileIDs
+# cannot be predicted by hand. Run Elementis > Characters > Setup Characters
+# (Assets/Characters/Editor/CharacterSetup.cs) in the Editor — it rebuilds
+# this controller with the correct clip motions by take name.
+# States, order and Run speed below are the real spec; only the motion
+# links are placeholders. See CHARACTER-NOTES.md for the clip table.
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!91 &9100000
+AnimatorController:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Katara
+  m_AnimatorParameters: []
+  m_AnimatorLayers:
+  - serializedVersion: 1
+    m_Name: Base Layer
+    m_StateMachine: {fileID: 1100000}
+    m_Mask: {fileID: 0}
+    m_Motions: []
+    m_Behaviours: []
+    m_BlendingMode: 0
+    m_SyncedLayerAffectsTiming: 0
+    m_IKPass: 0
+    m_SyncedLayerIndex: -1
+  m_LayerCount: 1
+--- !u!1102 &1100000
+AnimatorStateMachine:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Base Layer
+  m_ChildStates:
+  - serializedVersion: 1
+    m_State: {fileID: 1100001}
+    m_Position: {x: 200, y: 0, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 1100002}
+    m_Position: {x: 420, y: 0, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 1100003}
+    m_Position: {x: 640, y: 0, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 1100004}
+    m_Position: {x: 860, y: 0, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 1100005}
+    m_Position: {x: 1080, y: 0, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 1100006}
+    m_Position: {x: 200, y: 90, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 1100007}
+    m_Position: {x: 420, y: 90, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 1100008}
+    m_Position: {x: 640, y: 90, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 1100009}
+    m_Position: {x: 860, y: 90, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 1100010}
+    m_Position: {x: 1080, y: 90, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 1100011}
+    m_Position: {x: 200, y: 180, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 1100012}
+    m_Position: {x: 420, y: 180, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 1100013}
+    m_Position: {x: 640, y: 180, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 1100014}
+    m_Position: {x: 860, y: 180, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 1100015}
+    m_Position: {x: 1080, y: 180, z: 0}
+  m_ChildStateMachines: []
+  m_AnyStateTransitions: []
+  m_EntryTransitions: []
+  m_StateMachineTransitions: {}
+  m_AnyStatePosition: {x: 180, y: -90, z: 0}
+  m_EntryPosition: {x: 180, y: 0, z: 0}
+  m_ExitPosition: {x: 680, y: 0, z: 0}
+  m_DefaultState: {fileID: 1100001}
+  m_StateMachineBehaviours: []
+--- !u!1102 &1100001
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Idle
+  m_Speed: 1.0
+  m_CycleOffset: 0
+  m_Transitions: []
+  m_StateMachine: {fileID: 1100000}
+  m_Motion: {fileID: 0}  # PLACEHOLDER — filled by CharacterSetup.cs
+  m_IkOnFeet: 0
+  m_WriteDefaultValues: 1
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_SpeedParameter: 
+  m_CycleOffsetParameterActive: 0
+  m_CycleOffsetParameter: 
+  m_TimeParameterActive: 0
+  m_TimeParameter: 
+  m_MirrorParameterActive: 0
+  m_MirrorParameter: 
+--- !u!1102 &1100002
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Run
+  m_Speed: 1.06
+  m_CycleOffset: 0
+  m_Transitions: []
+  m_StateMachine: {fileID: 1100000}
+  m_Motion: {fileID: 0}  # PLACEHOLDER — filled by CharacterSetup.cs
+  m_IkOnFeet: 0
+  m_WriteDefaultValues: 1
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_SpeedParameter: 
+  m_CycleOffsetParameterActive: 0
+  m_CycleOffsetParameter: 
+  m_TimeParameterActive: 0
+  m_TimeParameter: 
+  m_MirrorParameterActive: 0
+  m_MirrorParameter: 
+--- !u!1102 &1100003
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Punch_Jab
+  m_Speed: 1.0
+  m_CycleOffset: 0
+  m_Transitions: []
+  m_StateMachine: {fileID: 1100000}
+  m_Motion: {fileID: 0}  # PLACEHOLDER — filled by CharacterSetup.cs
+  m_IkOnFeet: 0
+  m_WriteDefaultValues: 1
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_SpeedParameter: 
+  m_CycleOffsetParameterActive: 0
+  m_CycleOffsetParameter: 
+  m_TimeParameterActive: 0
+  m_TimeParameter: 
+  m_MirrorParameterActive: 0
+  m_MirrorParameter: 
+--- !u!1102 &1100004
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Punch_Cross
+  m_Speed: 1.0
+  m_CycleOffset: 0
+  m_Transitions: []
+  m_StateMachine: {fileID: 1100000}
+  m_Motion: {fileID: 0}  # PLACEHOLDER — filled by CharacterSetup.cs
+  m_IkOnFeet: 0
+  m_WriteDefaultValues: 1
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_SpeedParameter: 
+  m_CycleOffsetParameterActive: 0
+  m_CycleOffsetParameter: 
+  m_TimeParameterActive: 0
+  m_TimeParameter: 
+  m_MirrorParameterActive: 0
+  m_MirrorParameter: 
+--- !u!1102 &1100005
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Kick
+  m_Speed: 1.0
+  m_CycleOffset: 0
+  m_Transitions: []
+  m_StateMachine: {fileID: 1100000}
+  m_Motion: {fileID: 0}  # PLACEHOLDER — filled by CharacterSetup.cs
+  m_IkOnFeet: 0
+  m_WriteDefaultValues: 1
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_SpeedParameter: 
+  m_CycleOffsetParameterActive: 0
+  m_CycleOffsetParameter: 
+  m_TimeParameterActive: 0
+  m_TimeParameter: 
+  m_MirrorParameterActive: 0
+  m_MirrorParameter: 
+--- !u!1102 &1100006
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Cast
+  m_Speed: 1.0
+  m_CycleOffset: 0
+  m_Transitions: []
+  m_StateMachine: {fileID: 1100000}
+  m_Motion: {fileID: 0}  # PLACEHOLDER — filled by CharacterSetup.cs
+  m_IkOnFeet: 0
+  m_WriteDefaultValues: 1
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_SpeedParameter: 
+  m_CycleOffsetParameterActive: 0
+  m_CycleOffsetParameter: 
+  m_TimeParameterActive: 0
+  m_TimeParameter: 
+  m_MirrorParameterActive: 0
+  m_MirrorParameter: 
+--- !u!1102 &1100007
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Hit
+  m_Speed: 1.0
+  m_CycleOffset: 0
+  m_Transitions: []
+  m_StateMachine: {fileID: 1100000}
+  m_Motion: {fileID: 0}  # PLACEHOLDER — filled by CharacterSetup.cs
+  m_IkOnFeet: 0
+  m_WriteDefaultValues: 1
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_SpeedParameter: 
+  m_CycleOffsetParameterActive: 0
+  m_CycleOffsetParameter: 
+  m_TimeParameterActive: 0
+  m_TimeParameter: 
+  m_MirrorParameterActive: 0
+  m_MirrorParameter: 
+--- !u!1102 &1100008
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: KO
+  m_Speed: 1.0
+  m_CycleOffset: 0
+  m_Transitions: []
+  m_StateMachine: {fileID: 1100000}
+  m_Motion: {fileID: 0}  # PLACEHOLDER — filled by CharacterSetup.cs
+  m_IkOnFeet: 0
+  m_WriteDefaultValues: 1
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_SpeedParameter: 
+  m_CycleOffsetParameterActive: 0
+  m_CycleOffsetParameter: 
+  m_TimeParameterActive: 0
+  m_TimeParameter: 
+  m_MirrorParameterActive: 0
+  m_MirrorParameter: 
+--- !u!1102 &1100009
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Jump_Start
+  m_Speed: 1.0
+  m_CycleOffset: 0
+  m_Transitions: []
+  m_StateMachine: {fileID: 1100000}
+  m_Motion: {fileID: 0}  # PLACEHOLDER — filled by CharacterSetup.cs
+  m_IkOnFeet: 0
+  m_WriteDefaultValues: 1
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_SpeedParameter: 
+  m_CycleOffsetParameterActive: 0
+  m_CycleOffsetParameter: 
+  m_TimeParameterActive: 0
+  m_TimeParameter: 
+  m_MirrorParameterActive: 0
+  m_MirrorParameter: 
+--- !u!1102 &1100010
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Jump_Loop
+  m_Speed: 1.0
+  m_CycleOffset: 0
+  m_Transitions: []
+  m_StateMachine: {fileID: 1100000}
+  m_Motion: {fileID: 0}  # PLACEHOLDER — filled by CharacterSetup.cs
+  m_IkOnFeet: 0
+  m_WriteDefaultValues: 1
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_SpeedParameter: 
+  m_CycleOffsetParameterActive: 0
+  m_CycleOffsetParameter: 
+  m_TimeParameterActive: 0
+  m_TimeParameter: 
+  m_MirrorParameterActive: 0
+  m_MirrorParameter: 
+--- !u!1102 &1100011
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Jump_Land
+  m_Speed: 1.0
+  m_CycleOffset: 0
+  m_Transitions: []
+  m_StateMachine: {fileID: 1100000}
+  m_Motion: {fileID: 0}  # PLACEHOLDER — filled by CharacterSetup.cs
+  m_IkOnFeet: 0
+  m_WriteDefaultValues: 1
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_SpeedParameter: 
+  m_CycleOffsetParameterActive: 0
+  m_CycleOffsetParameter: 
+  m_TimeParameterActive: 0
+  m_TimeParameter: 
+  m_MirrorParameterActive: 0
+  m_MirrorParameter: 
+--- !u!1102 &1100012
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Dodge
+  m_Speed: 1.0
+  m_CycleOffset: 0
+  m_Transitions: []
+  m_StateMachine: {fileID: 1100000}
+  m_Motion: {fileID: 0}  # PLACEHOLDER — filled by CharacterSetup.cs
+  m_IkOnFeet: 0
+  m_WriteDefaultValues: 1
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_SpeedParameter: 
+  m_CycleOffsetParameterActive: 0
+  m_CycleOffsetParameter: 
+  m_TimeParameterActive: 0
+  m_TimeParameter: 
+  m_MirrorParameterActive: 0
+  m_MirrorParameter: 
+--- !u!1102 &1100013
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Block
+  m_Speed: 1.0
+  m_CycleOffset: 0
+  m_Transitions: []
+  m_StateMachine: {fileID: 1100000}
+  m_Motion: {fileID: 0}  # PLACEHOLDER — filled by CharacterSetup.cs
+  m_IkOnFeet: 0
+  m_WriteDefaultValues: 1
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_SpeedParameter: 
+  m_CycleOffsetParameterActive: 0
+  m_CycleOffsetParameter: 
+  m_TimeParameterActive: 0
+  m_TimeParameter: 
+  m_MirrorParameterActive: 0
+  m_MirrorParameter: 
+--- !u!1102 &1100014
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: RegenChannel
+  m_Speed: 1.0
+  m_CycleOffset: 0
+  m_Transitions: []
+  m_StateMachine: {fileID: 1100000}
+  m_Motion: {fileID: 0}  # PLACEHOLDER — filled by CharacterSetup.cs
+  m_IkOnFeet: 0
+  m_WriteDefaultValues: 1
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_SpeedParameter: 
+  m_CycleOffsetParameterActive: 0
+  m_CycleOffsetParameter: 
+  m_TimeParameterActive: 0
+  m_TimeParameter: 
+  m_MirrorParameterActive: 0
+  m_MirrorParameter: 
+--- !u!1102 &1100015
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: UltimateCast
+  m_Speed: 1.0
+  m_CycleOffset: 0
+  m_Transitions: []
+  m_StateMachine: {fileID: 1100000}
+  m_Motion: {fileID: 0}  # PLACEHOLDER — filled by CharacterSetup.cs
+  m_IkOnFeet: 0
+  m_WriteDefaultValues: 1
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_SpeedParameter: 
+  m_CycleOffsetParameterActive: 0
+  m_CycleOffsetParameter: 
+  m_TimeParameterActive: 0
+  m_TimeParameter: 
+  m_MirrorParameterActive: 0
+  m_MirrorParameter: 

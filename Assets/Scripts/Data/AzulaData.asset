@@ -1,0 +1,75 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67626c018ae40aa7b6e8a984b94b76c7, type: 3}
+  m_Name: AzulaData
+  m_EditorClassIdentifier: 
+  characterId: azula
+  displayName: Azula
+  element: fire
+  topColor: {r: 0.62, g: 0.08, b: 0.08, a: 1}
+  accentColor: {r: 0.3, g: 0.45, b: 1.0, a: 1}
+  accent2Color: {r: 0.65, g: 0.8, b: 1.0, a: 1}
+  runSpeed: 0.96
+  punchDamage: 8
+  punch2Damage: 10
+  kickDamage: 13
+  finisherDamage: 22
+  punchCooldown: 0.35
+  kickCooldown: 0.55
+  skills:
+  - name: Fireball
+    shortName: FIRE
+    damage: 20
+    cost: 25
+    cooldown: 1.2
+    vfxPrefab: Fireball
+    castSound: fire_whoosh
+    hitSound: impact_thud
+    hitDelay: 0.22
+    range: 0
+  - name: Flame Sweep
+    shortName: SWEEP
+    damage: 24
+    cost: 35
+    cooldown: 2.5
+    vfxPrefab: FlameSweep
+    castSound: fire_whoosh
+    hitSound: impact_thud
+    hitDelay: 0.27
+    range: 3.0
+  - name: Lightning Strike
+    shortName: BOLT
+    damage: 30
+    cost: 30
+    cooldown: 3.0
+    vfxPrefab: LightningStrike
+    castSound: lightning_zap
+    hitSound: lightning_zap
+    hitDelay: 0.25
+    range: 1.8
+  - name: Fire Spin
+    shortName: SPIN
+    damage: 20
+    cost: 30
+    cooldown: 3.5
+    vfxPrefab: FireSpin
+    castSound: fire_whoosh
+    hitSound: impact_thud
+    hitDelay: 0.23
+    range: 2.8
+  ultimateDamage: 60
+  ultimateRange: 4.5
+  ultimateKnockback: 14
+  ultimateVfx: UltimateAzula
+  ultimateSound: ultimate_azula
+  regenHpPerSecond: 12
+  regenManaPerSecond: 14

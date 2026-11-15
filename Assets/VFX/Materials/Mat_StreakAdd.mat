@@ -1,0 +1,96 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Mat_StreakAdd
+  m_Shader: {fileID: 4800000, guid: 0406db5a14f94604a8c57ccfbc9f3b46, type: 3}
+  m_ShaderKeywords:
+  - _SURFACE_TYPE_TRANSPARENT
+  - _ALPHAPREMULTIPLY_ON
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - m_Name: _BaseMap
+      m_Texture: {fileID: 2800000, guid: 10eb813efb8e4058bf3d9616503a888b, type: 3}
+      m_Scale: {x: 1, y: 1}
+      m_Offset: {x: 0, y: 0}
+    - m_Name: _BumpMap
+      m_Texture: {fileID: 0}
+      m_Scale: {x: 1, y: 1}
+      m_Offset: {x: 0, y: 0}
+    - m_Name: _EmissionMap
+      m_Texture: {fileID: 0}
+      m_Scale: {x: 1, y: 1}
+      m_Offset: {x: 0, y: 0}
+    m_Ints:
+    - m_Name: _Surface
+      m_Value: 1
+    - m_Name: _Blend
+      m_Value: 2
+    - m_Name: _Cull
+      m_Value: 0
+    - m_Name: _AlphaClip
+      m_Value: 0
+    - m_Name: _BlendOp
+      m_Value: 0
+    - m_Name: _SrcBlend
+      m_Value: 1
+    - m_Name: _DstBlend
+      m_Value: 1
+    - m_Name: _SrcBlendAlpha
+      m_Value: 1
+    - m_Name: _DstBlendAlpha
+      m_Value: 1
+    - m_Name: _ZWrite
+      m_Value: 0
+    - m_Name: _AlphaToMask
+      m_Value: 0
+    - m_Name: _ColorMode
+      m_Value: 0
+    - m_Name: _FlipbookBlending
+      m_Value: 0
+    - m_Name: _SoftParticlesEnabled
+      m_Value: 0
+    - m_Name: _CameraFadingEnabled
+      m_Value: 0
+    - m_Name: _DistortionEnabled
+      m_Value: 0
+    m_Floats:
+    - m_Name: _Cutoff
+      m_Value: 0.5
+    - m_Name: _QueueOffset
+      m_Value: 0
+    - m_Name: _SoftParticlesNearFadeDistance
+      m_Value: 0
+    - m_Name: _SoftParticlesFarFadeDistance
+      m_Value: 1
+    - m_Name: _CameraNearFadeDistance
+      m_Value: 1
+    - m_Name: _CameraFarFadeDistance
+      m_Value: 2
+    - m_Name: _DistortionBlend
+      m_Value: 0.5
+    - m_Name: _DistortionStrength
+      m_Value: 1
+    - m_Name: _DistortionStrengthScaled
+      m_Value: 0.1
+    m_Colors:
+    - m_Name: _BaseColor
+      m_Value: {r: 1, g: 1, b: 1, a: 1}
+    - m_Name: _EmissionColor
+      m_Value: {r: 0, g: 0, b: 0, a: 1}
+    - m_Name: _BaseColorAddSubDiff
+      m_Value: {r: 0, g: 0, b: 0, a: 0}
+    - m_Name: _Color
+      m_Value: {r: 1, g: 1, b: 1, a: 1}

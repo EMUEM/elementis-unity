@@ -7,6 +7,17 @@ public static class ProofBuild
 {
     public static void BuildAndroid()
     {
+        // Phase 2: finalize the character prefabs BEFORE building. The
+        // hand-authored Katara/Azula prefabs carry {fileID: 0} placeholders
+        // for FBX sub-assets (meshes, clips, Avatars) until
+        // CharacterSetup.SetupCharacters() runs in the Editor. Setup is
+        // idempotent (delete + rebuild: avatar, controller, prefab), so
+        // running it on every build is safe. If it cannot complete
+        // (missing clips), VerifyCharactersOrThrow fails the build LOUDLY
+        // instead of shipping placeholder characters.
+        CharacterSetup.SetupCharacters();
+        VerifyCharactersOrThrow();
+
         // Android SDK / NDK / JDK: use the ones bundled with the Hub-installed module.
         // Project is ~/workspace/tools/unity/projects/elementis-proof, editor is
         // ~/workspace/tools/unity/editors/6000.0.85f2 — so ../editors/... from the project dir.
@@ -65,5 +76,32 @@ public static class ProofBuild
         // emit the exact string here — ONLY on a genuinely successful build.
         Debug.Log("Build succeeded!");
         Debug.Log("PROOF_BUILD_DONE");
+    }
+
+    // Phase 2 gate: after CharacterSetup runs, both fighter prefabs must
+    // carry a real human Avatar and a real AnimatorController. Anything
+    // else means the characters never finalized — fail the build with a
+    // clear message instead of shipping a fight with invisible fighters.
+    static void VerifyCharactersOrThrow()
+    {
+        foreach (var name in new[] { "Katara", "Azula" })
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Characters/" + name + ".prefab");
+            if (prefab == null)
+                throw new System.Exception("[CharacterSetup] " + name + ".prefab NOT FOUND.");
+            var anim = prefab.GetComponent<Animator>();
+            if (anim == null)
+                throw new System.Exception("[CharacterSetup] " + name + ".prefab has no Animator.");
+            if (anim.avatar == null || !anim.avatar.isHuman)
+                throw new System.Exception("[CharacterSetup] " + name +
+                    " has no valid human Avatar — SetupCharacters did not finalize it.");
+            if (anim.runtimeAnimatorController == null)
+                throw new System.Exception("[CharacterSetup] " + name +
+                    " has no AnimatorController — SetupCharacters did not finalize it.");
+            Debug.Log("[CharacterSetup] verified " + name + ": avatar human=" +
+                anim.avatar.isHuman + ", controller=" +
+                anim.runtimeAnimatorController.name);
+        }
     }
 }
