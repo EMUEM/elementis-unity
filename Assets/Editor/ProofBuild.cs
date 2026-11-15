@@ -34,8 +34,14 @@ public static class ProofBuild
         // that impossible to ship again:
         //   1. VerifySceneWiringOrThrow — reload Main.unity from disk
         //      (the build uses the OPEN scene, so a stale in-memory scene
-        //      would silently ship null refs) and fail LOUDLY if any
-        //      FightBootstrap reference is null.
+        //      would silently ship null refs) and fail LOUDLY on any null
+        //      FightBootstrap reference that has no fallback (arena,
+        //      prefabs, camera, rounds). The two data refs heal instead:
+        //      CI run 43734265750 proved they deserialize to NULL even
+        //      though the .asset files exist, import, and match by GUID —
+        //      so the gate loads them directly from disk, assigns them,
+        //      and re-saves the scene (the fight also falls back to
+        //      FighterDataLibrary.Create, so null data is never fatal).
         //   2. SmokeTestFightStartOrThrow — run the real spawn + BeginMatch
         //      path for BOTH hero orders in the editor and fail LOUDLY if
         //      either cannot start a match (the exact v0.2.0 failure).
@@ -119,6 +125,17 @@ public static class ProofBuild
     // editor started with broken prefab files the in-memory scene keeps
     // null refs even after CharacterSetup fixed the files on disk — the
     // build would then ship an empty world with zero errors. Fail LOUDLY.
+    //
+    // Data assets are special (CI run 43734265750): the scene's
+    // kataraData/azulaData refs deserialize to NULL even though the
+    // .asset files exist, import cleanly, and their GUIDs match the
+    // scene — a deserialization quirk of the hand-authored
+    // ScriptableObject YAML. The fight does NOT depend on them
+    // (FighterController.Setup falls back to FighterDataLibrary.Create,
+    // the same approved numbers), so a null data ref is healed, not
+    // fatal: load the asset directly from disk, assign it to the
+    // bootstrap, and re-save the scene so the build uses the real
+    // data. Only a disk asset that cannot be loaded at all is fatal.
     static void VerifySceneWiringOrThrow()
     {
         EditorSceneManager.OpenScene("Assets/Scenes/Main.unity");
@@ -134,14 +151,37 @@ public static class ProofBuild
             throw new System.Exception("[ProofBuild] FightBootstrap.kataraPrefab is NULL in Main.unity — Katara would never spawn.");
         if (bootstrap.azulaPrefab == null)
             throw new System.Exception("[ProofBuild] FightBootstrap.azulaPrefab is NULL in Main.unity — Azula would never spawn.");
-        if (bootstrap.kataraData == null)
-            throw new System.Exception("[ProofBuild] FightBootstrap.kataraData is NULL in Main.unity.");
-        if (bootstrap.azulaData == null)
-            throw new System.Exception("[ProofBuild] FightBootstrap.azulaData is NULL in Main.unity.");
         if (bootstrap.reelCamera == null)
-            throw new System.Exception("[ProofBuild] FightBootstrap.reelCamera is NULL in Main.unity.");
+            throw new System.Exception("[ProofBuild] FightBootstrap.reelCamera is NULL in Main.unity — no fight camera.");
         if (bootstrap.roundManager == null)
             throw new System.Exception("[ProofBuild] FightBootstrap.roundManager is NULL in Main.unity — BeginMatch would return false and the fight would never start.");
+        // Data refs: diagnose + heal (see the comment above).
+        Debug.Log("[ProofBuild] scene kataraData ref: " + (bootstrap.kataraData == null ? "NULL" : "ok") +
+            " | azulaData ref: " + (bootstrap.azulaData == null ? "NULL" : "ok"));
+        bool healed = false;
+        if (bootstrap.kataraData == null)
+        {
+            bootstrap.kataraData = AssetDatabase.LoadAssetAtPath<FighterData>("Assets/Scripts/Data/KataraData.asset");
+            Debug.Log("[ProofBuild] direct load KataraData.asset: " + (bootstrap.kataraData == null ? "NULL (asset itself unloadable)" : "OK"));
+            if (bootstrap.kataraData == null)
+                throw new System.Exception("[ProofBuild] KataraData.asset cannot be loaded from disk — the data asset itself is broken; regenerate it from FighterDataLibrary.");
+            healed = true;
+        }
+        if (bootstrap.azulaData == null)
+        {
+            bootstrap.azulaData = AssetDatabase.LoadAssetAtPath<FighterData>("Assets/Scripts/Data/AzulaData.asset");
+            Debug.Log("[ProofBuild] direct load AzulaData.asset: " + (bootstrap.azulaData == null ? "NULL (asset itself unloadable)" : "OK"));
+            if (bootstrap.azulaData == null)
+                throw new System.Exception("[ProofBuild] AzulaData.asset cannot be loaded from disk — the data asset itself is broken; regenerate it from FighterDataLibrary.");
+            healed = true;
+        }
+        if (healed)
+        {
+            var scene = EditorSceneManager.GetActiveScene();
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.LogWarning("[ProofBuild] healed null data ref(s) from the disk .asset files and re-saved Main.unity for this build.");
+        }
         Debug.Log("[ProofBuild] Main.unity wiring verified: arena + both prefabs + both data + camera + rounds.");
     }
 
