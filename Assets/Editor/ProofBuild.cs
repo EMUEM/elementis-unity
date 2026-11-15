@@ -34,10 +34,24 @@ public static class ProofBuild
         EditorUserBuildSettings.buildAppBundle = false;
         EditorUserBuildSettings.exportAsGoogleAndroidProject = false;
 
+        // Honor game-ci's -customBuildPath when present (the CI runner passes an
+        // absolute path such as /github/workspace/build/Android/Android.apk).
+        // Local builds run without that argument and keep the default path.
+        var locationPathName = "Builds/Android/elementis-proof.apk";
+        var args = System.Environment.GetCommandLineArgs();
+        for (var i = 0; i + 1 < args.Length; i++)
+        {
+            if (args[i] == "-customBuildPath" && !string.IsNullOrEmpty(args[i + 1]))
+            {
+                locationPathName = args[i + 1];
+                break;
+            }
+        }
+
         var options = new BuildPlayerOptions
         {
             scenes = new[] { "Assets/Scenes/Main.unity" },
-            locationPathName = "Builds/Android/elementis-proof.apk",
+            locationPathName = locationPathName,
             target = BuildTarget.Android,
             options = BuildOptions.None
         };

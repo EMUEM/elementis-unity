@@ -48,5 +48,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: elementis-proof-apk
-          path: Builds/Android/elementis-proof.apk
+          path: build/Android/Android.apk
           if-no-files-found: error
